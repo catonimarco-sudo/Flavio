@@ -12,7 +12,14 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Cloud,
+  CloudUpload,
+  RefreshCw,
+  Share2,
+  Copy,
 } from 'lucide-react';
+
+export type CloudSyncStatus = 'idle' | 'saving' | 'saved' | 'live' | 'error';
 
 interface HeaderProps {
   tacticTitle: string;
@@ -28,6 +35,13 @@ interface HeaderProps {
   onToggleSquadSidebar?: () => void;
   showSessionSidebar?: boolean;
   onToggleSessionSidebar?: () => void;
+  // Cloud sync props
+  currentTacticId: string | null;
+  cloudSyncStatus: CloudSyncStatus;
+  cloudErrorMessage?: string | null;
+  onSaveToCloud: () => void;
+  onCopyShareLink: () => void;
+  isCopiedLink: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -44,6 +58,12 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSquadSidebar,
   showSessionSidebar,
   onToggleSessionSidebar,
+  currentTacticId,
+  cloudSyncStatus,
+  cloudErrorMessage,
+  onSaveToCloud,
+  onCopyShareLink,
+  isCopiedLink,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(tacticTitle);
@@ -85,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
               Mister<span className="text-emerald-400">Tactics</span>
             </span>
             <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 uppercase hidden md:inline">
-              HD Workstation
+              Cloud HD
             </span>
           </div>
         </div>
@@ -93,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="h-4 w-px bg-slate-800 hidden md:block" />
 
         {/* Tactic Title (Editable) */}
-        <div className="relative min-w-0 max-w-[130px] xs:max-w-[180px] sm:max-w-[260px] md:max-w-[360px]">
+        <div className="relative min-w-0 max-w-[130px] xs:max-w-[170px] sm:max-w-[240px] md:max-w-[320px]">
           {isEditingTitle ? (
             <form onSubmit={handleTitleSubmit} className="flex items-center gap-1">
               <input
@@ -134,6 +154,69 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Key Action Buttons */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
+        {/* Cloud Status & Save Button */}
+        <div className="flex items-center gap-1">
+          <button
+            id="btn-cloud-save"
+            onClick={onSaveToCloud}
+            disabled={cloudSyncStatus === 'saving'}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all active:scale-95 shrink-0 ${
+              cloudSyncStatus === 'saving'
+                ? 'bg-blue-950/80 border-blue-600 text-blue-300 cursor-wait'
+                : cloudSyncStatus === 'saved' || cloudSyncStatus === 'live'
+                ? 'bg-emerald-950/80 border-emerald-600/80 text-emerald-300 hover:bg-emerald-900/80'
+                : cloudSyncStatus === 'error'
+                ? 'bg-red-950/80 border-red-600 text-red-300'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border-blue-400 text-white shadow'
+            }`}
+            title={
+              cloudErrorMessage ||
+              (currentTacticId
+                ? `Sincronizzato su Firestore ID: ${currentTacticId}`
+                : 'Salva e sincronizza schema su Firebase Firestore')
+            }
+          >
+            {cloudSyncStatus === 'saving' ? (
+              <>
+                <RefreshCw size={13} className="animate-spin text-blue-400" />
+                <span className="hidden xs:inline">Salvataggio...</span>
+              </>
+            ) : cloudSyncStatus === 'saved' || cloudSyncStatus === 'live' ? (
+              <>
+                <Check size={13} className="text-emerald-400" />
+                <span className="hidden xs:inline">Salvato Cloud</span>
+              </>
+            ) : cloudSyncStatus === 'error' ? (
+              <>
+                <Cloud size={13} className="text-red-400" />
+                <span className="hidden xs:inline">Riprova Cloud</span>
+              </>
+            ) : (
+              <>
+                <CloudUpload size={13} />
+                <span className="hidden xs:inline">Salva su Cloud</span>
+              </>
+            )}
+          </button>
+
+          {/* Copy Share Link Button (active when tactic has an ID) */}
+          {currentTacticId && (
+            <button
+              id="btn-copy-share-link"
+              onClick={onCopyShareLink}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition-all active:scale-95 shrink-0 ${
+                isCopiedLink
+                  ? 'bg-emerald-900/80 border-emerald-500 text-emerald-200'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+              }`}
+              title="Copia link condivisibile per iPhone / iPad / PC"
+            >
+              {isCopiedLink ? <Check size={13} className="text-emerald-400" /> : <Share2 size={13} />}
+              <span className="hidden sm:inline">{isCopiedLink ? 'Link Copiato!' : 'Condividi'}</span>
+            </button>
+          )}
+        </div>
+
         {/* Rosa Squadra Modal */}
         <button
           id="btn-open-squad"

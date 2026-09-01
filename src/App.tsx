@@ -29,6 +29,14 @@ import { ExportModal } from './components/ExportModal';
 import { PlayerEditPopover } from './components/PlayerEditPopover';
 import { AnimationControls } from './components/AnimationControls';
 import { X } from 'lucide-react';
+import { CloudSyncStatus } from './components/Header';
+import {
+  saveTacticToCloud,
+  fetchTacticFromCloud,
+  subscribeToTactic,
+  generateTacticId,
+  CloudTacticData,
+} from './services/tacticsCloud';
 
 const STORAGE_KEY = 'mister_tactics_state_v1';
 
@@ -234,6 +242,25 @@ export default function App() {
 
   const pitchSvgRef = useRef<SVGSVGElement | null>(null);
 
+  // Cloud Sync & Realtime States
+  const [currentTacticId, setCurrentTacticId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlId = params.get('id');
+      if (urlId) return urlId;
+    }
+    try {
+      return localStorage.getItem(`${STORAGE_KEY}_current_cloud_id`) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('idle');
+  const [cloudErrorMessage, setCloudErrorMessage] = useState<string | null>(null);
+  const [isCopiedLink, setIsCopiedLink] = useState(false);
+  const isApplyingRemoteUpdateRef = useRef(false);
+
   // Push state to undo history
   const recordHistory = useCallback(() => {
     setHistory((prev) => [
@@ -336,6 +363,140 @@ export default function App() {
       localStorage.setItem(`${STORAGE_KEY}_drill_sheet`, JSON.stringify(drillSheet));
     } catch (e) {}
   }, [drillSheet]);
+
+  // Persist current cloud tactic ID to localStorage and URL
+  useEffect(() => {
+    if (currentTacticId) {
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_current_cloud_id`, currentTacticId);
+      } catch {}
+      // Update URL without full page reload
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('id') !== currentTacticId) {
+          url.searchParams.set('id', currentTacticId);
+          window.history.replaceState({}, '', url.toString());
+        }
+      }
+    }
+  }, [currentTacticId]);
+
+  // Real-time Firestore onSnapshot listener
+  useEffect(() => {
+    if (!currentTacticId) return;
+
+    setCloudSyncStatus('live');
+    const unsubscribe = subscribeToTactic(
+      currentTacticId,
+      (cloudData: CloudTacticData) => {
+        if (!cloudData) return;
+
+        isApplyingRemoteUpdateRef.current = true;
+
+        if (cloudData.title) setTacticTitle(cloudData.title);
+        if (cloudData.squad && Array.isArray(cloudData.squad)) setSquad(cloudData.squad);
+        if (cloudData.drillSheet) setDrillSheet(cloudData.drillSheet);
+        if (cloudData.pitchSection) setPitchSection(cloudData.pitchSection);
+        if (cloudData.pitchTheme) setPitchTheme(cloudData.pitchTheme);
+        if (cloudData.jerseyStyle) setJerseyStyle(cloudData.jerseyStyle);
+
+        if (cloudData.players && Array.isArray(cloudData.players)) {
+          setPlayers(cloudData.players.map(sanitizeCoords));
+        }
+        if (cloudData.equipment && Array.isArray(cloudData.equipment)) {
+          setEquipment(cloudData.equipment.map(sanitizeCoords));
+        }
+        if (cloudData.drawings && Array.isArray(cloudData.drawings)) {
+          setDrawings(cloudData.drawings.map(sanitizeDrawing));
+        }
+        if (cloudData.animationSteps && Array.isArray(cloudData.animationSteps)) {
+          setAnimationSteps(
+            cloudData.animationSteps.map((step) => ({
+              ...step,
+              players: (step.players || []).map(sanitizeCoords),
+              equipment: (step.equipment || []).map(sanitizeCoords),
+              drawings: (step.drawings || []).map(sanitizeDrawing),
+            }))
+          );
+        }
+
+        setCloudSyncStatus('saved');
+        setTimeout(() => {
+          isApplyingRemoteUpdateRef.current = false;
+        }, 300);
+      },
+      (error) => {
+        console.error('Firestore sync error:', error);
+        setCloudSyncStatus('error');
+        setCloudErrorMessage('Errore connessione Firestore');
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [currentTacticId]);
+
+  // Initial Load by URL query param ?id=
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const urlId = params.get('id');
+    if (urlId && urlId !== currentTacticId) {
+      setCurrentTacticId(urlId);
+    }
+  }, []);
+
+  // Save current whiteboard state to Firestore Cloud
+  const handleSaveToCloud = async (overrideId?: string) => {
+    const idToSave = overrideId || currentTacticId || generateTacticId();
+    setCloudSyncStatus('saving');
+    setCloudErrorMessage(null);
+
+    try {
+      await saveTacticToCloud(idToSave, {
+        title: tacticTitle,
+        squad,
+        players,
+        equipment,
+        drawings,
+        drillSheet,
+        animationSteps,
+        pitchSection,
+        pitchTheme,
+        jerseyStyle,
+        deviceOrigin: typeof navigator !== 'undefined' ? navigator.userAgent : 'web',
+      });
+
+      if (currentTacticId !== idToSave) {
+        setCurrentTacticId(idToSave);
+      }
+      setCloudSyncStatus('saved');
+    } catch (err: any) {
+      console.error('Error saving tactic to Firestore:', err);
+      setCloudSyncStatus('error');
+      setCloudErrorMessage(err?.message || 'Errore durante il salvataggio Firestore');
+    }
+  };
+
+  // Copy shareable link to clipboard (?id=...)
+  const handleCopyShareLink = () => {
+    if (!currentTacticId) return;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const shareUrl = `${origin}${pathname}?id=${encodeURIComponent(currentTacticId)}`;
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setIsCopiedLink(true);
+        setTimeout(() => setIsCopiedLink(false), 2500);
+      }).catch(() => {
+        prompt('Copia questo link per condividere lo schema:', shareUrl);
+      });
+    } else {
+      prompt('Copia questo link per condividere lo schema:', shareUrl);
+    }
+  };
 
   // Undo / Redo handlers
   const handleUndo = () => {
@@ -623,6 +784,12 @@ export default function App() {
         onToggleSquadSidebar={() => setShowSquadSidebar(!showSquadSidebar)}
         showSessionSidebar={showSessionSidebar}
         onToggleSessionSidebar={() => setShowSessionSidebar(!showSessionSidebar)}
+        currentTacticId={currentTacticId}
+        cloudSyncStatus={cloudSyncStatus}
+        cloudErrorMessage={cloudErrorMessage}
+        onSaveToCloud={() => handleSaveToCloud()}
+        onCopyShareLink={handleCopyShareLink}
+        isCopiedLink={isCopiedLink}
       />
 
       {/* 2. Optional Animation Bar */}
