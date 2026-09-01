@@ -4,20 +4,22 @@ import { PlacedPlayer } from '../types';
 interface PlayerPitchNodeProps {
   player: PlacedPlayer;
   isSelected: boolean;
+  isDragging?: boolean;
   showPhotos: boolean;
   showNames: boolean;
   showNumbers: boolean;
   showRoles: boolean;
   showOrientation: boolean;
   jerseyStyle: 'shirt' | 'circle' | 'vest';
-  onSelect: (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent) => void;
-  onStartRotate?: (playerId: string, e: React.PointerEvent) => void;
+  onSelect: (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => void;
+  onStartRotate?: (playerId: string, e: React.PointerEvent | React.TouchEvent) => void;
   onDoubleClick?: (player: PlacedPlayer) => void;
 }
 
 export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
   player,
   isSelected,
+  isDragging = false,
   showPhotos,
   showNames,
   showNumbers,
@@ -91,13 +93,53 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
   return (
     <g
       id={`player-node-${player.id}`}
-      transform={`translate(${player.x}, ${player.y})`}
-      className="cursor-grab active:cursor-grabbing select-none group"
-      onPointerDown={(e) => onSelect(player, e as any)}
+      transform={`translate(${player.x}, ${player.y}) ${isDragging ? 'scale(1.15)' : 'scale(1)'}`}
+      className={`cursor-grab active:cursor-grabbing select-none group touch-none tactical-draggable transition-transform duration-75 ${
+        isDragging ? 'tactical-dragging-node' : ''
+      }`}
+      onPointerDown={(e) => {
+        onSelect(player, e);
+      }}
+      onTouchStart={(e) => {
+        // Prevent default browser gestures on mobile
+        e.stopPropagation();
+        onSelect(player, e);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       onDoubleClick={() => onDoubleClick?.(player)}
     >
+      {/* Dynamic Ground Elevation Shadow when Dragging */}
+      {isDragging && (
+        <ellipse
+          cx="0"
+          cy="26"
+          rx="22"
+          ry="7"
+          fill="#000000"
+          opacity="0.6"
+          className="pointer-events-none"
+        />
+      )}
+
+      {/* Active Touch Drag Glow Ring */}
+      {isDragging && (
+        <circle
+          cx="0"
+          cy="0"
+          r="36"
+          fill="none"
+          stroke="#38bdf8"
+          strokeWidth="3"
+          opacity="0.9"
+          className="animate-pulse"
+        />
+      )}
+
       {/* Selection Ring / Highlight */}
-      {isSelected && (
+      {isSelected && !isDragging && (
         <circle
           cx="0"
           cy="0"
@@ -135,21 +177,29 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
       {isSelected && onStartRotate && (
         <g
           transform={`rotate(${rotation})`}
-          className="cursor-crosshair"
+          className="cursor-crosshair touch-none tactical-draggable"
           onPointerDown={(e) => {
             e.stopPropagation();
             onStartRotate(player.id, e);
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            onStartRotate(player.id, e as any);
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
           }}
         >
           <line x1="0" y1="-32" x2="0" y2="-44" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 3" />
           <circle
             cx="0"
             cy="-45"
-            r="6.5"
+            r="8"
             fill="#38bdf8"
             stroke="#ffffff"
-            strokeWidth="2"
-            className="hover:scale-125 transition-transform"
+            strokeWidth="2.5"
+            className="hover:scale-125 active:scale-135 transition-transform"
           />
         </g>
       )}

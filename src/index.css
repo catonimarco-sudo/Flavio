@@ -19,8 +19,42 @@
   background: #475569;
 }
 
+/* Touch & Gesture Prevention for iPad/iPhone */
+html, body, #root {
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-action and no-callout for tactical elements */
+.tactical-draggable {
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 /* Technical dot matrix background */
 .tactical-dot-matrix {
   background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 20px 20px;
 }
+
+/* Keyframe for dragging glow pulse */
+@keyframes touch-drag-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 1)) drop-shadow(0 12px 20px rgba(0, 0, 0, 0.85));
+  }
+}
+
+.tactical-dragging-node {
+  animation: touch-drag-pulse 1.2s infinite ease-in-out;
+}
+

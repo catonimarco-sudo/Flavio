@@ -808,8 +808,8 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex-1 relative flex items-center justify-center overflow-x-auto overflow-y-hidden w-full h-full min-w-0">
-            <div className="w-full h-full min-w-[480px] sm:min-w-[620px] md:min-w-0 flex items-center justify-center relative">
+          <div className="flex-1 relative flex items-center justify-center overflow-x-auto overflow-y-hidden w-full h-full min-w-0 overscroll-contain">
+            <div className="w-full h-full min-w-[480px] sm:min-w-[620px] md:min-w-0 flex items-center justify-center relative touch-none select-none">
               <TacticalPitch
                 pitchRef={pitchSvgRef}
                 players={players}

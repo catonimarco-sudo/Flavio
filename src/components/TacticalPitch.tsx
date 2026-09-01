@@ -85,16 +85,19 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
   // Helper to convert client/touch event to SVG coordinate space
   const getSvgCoordinates = useCallback(
-    (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent): { x: number; y: number } => {
+    (e: React.MouseEvent | React.TouchEvent | React.PointerEvent | MouseEvent | TouchEvent | PointerEvent): { x: number; y: number } => {
       if (!svgRef.current) return { x: 0, y: 0 };
       const svg = svgRef.current;
       const rect = svg.getBoundingClientRect();
 
       let clientX = 0;
       let clientY = 0;
-      if ('touches' in e && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
+      if ('touches' in e && (e as TouchEvent).touches && (e as TouchEvent).touches.length > 0) {
+        clientX = (e as TouchEvent).touches[0].clientX;
+        clientY = (e as TouchEvent).touches[0].clientY;
+      } else if ('changedTouches' in e && (e as TouchEvent).changedTouches && (e as TouchEvent).changedTouches.length > 0) {
+        clientX = (e as TouchEvent).changedTouches[0].clientX;
+        clientY = (e as TouchEvent).changedTouches[0].clientY;
       } else if ('clientX' in e) {
         clientX = (e as MouseEvent).clientX;
         clientY = (e as MouseEvent).clientY;
@@ -111,6 +114,58 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
     },
     [svgRef]
   );
+
+  // Trigger light haptic pulse on mobile devices
+  const triggerHaptic = useCallback(() => {
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(15);
+      } catch (_) {}
+    }
+  }, []);
+
+  // Prevent unwanted page bouncing and scrolling when dragging on touch devices
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+
+    const handleNativeTouchMove = (e: TouchEvent) => {
+      // If actively dragging item or drawing, cancel browser default scrolling gesture
+      if (draggedItem || rotatingPlayerId || currentDrawing) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    svgEl.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
+
+    return () => {
+      svgEl.removeEventListener('touchmove', handleNativeTouchMove);
+    };
+  }, [draggedItem, rotatingPlayerId, currentDrawing, svgRef]);
+
+  // Global pointer/touch release listener fallback
+  useEffect(() => {
+    const handleGlobalRelease = () => {
+      if (draggedItem) {
+        setDraggedItem(null);
+      }
+      if (rotatingPlayerId) {
+        setRotatingPlayerId(null);
+      }
+    };
+
+    window.addEventListener('pointerup', handleGlobalRelease);
+    window.addEventListener('touchend', handleGlobalRelease);
+    window.addEventListener('touchcancel', handleGlobalRelease);
+
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalRelease);
+      window.removeEventListener('touchend', handleGlobalRelease);
+      window.removeEventListener('touchcancel', handleGlobalRelease);
+    };
+  }, [draggedItem, rotatingPlayerId]);
 
   // ViewBox dynamic cropping based on pitchSection
   const getViewBox = (): string => {
@@ -346,13 +401,14 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   };
 
   // Select/Drag Player
-  const handleSelectPlayer = (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent) => {
+  const handleSelectPlayer = (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => {
     e.stopPropagation();
     if (selectedTool === 'eraser') {
       onUpdatePlayers(players.filter((p) => p.id !== player.id));
       return;
     }
 
+    triggerHaptic();
     setSelectedId(player.id);
     onSelectPlayer(player);
     onSelectEquipment(null);
@@ -368,19 +424,21 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   };
 
   // Start rotating player
-  const handleStartRotate = (playerId: string, e: React.PointerEvent) => {
+  const handleStartRotate = (playerId: string, e: React.PointerEvent | React.TouchEvent) => {
     e.stopPropagation();
+    triggerHaptic();
     setRotatingPlayerId(playerId);
   };
 
   // Select/Drag Equipment
-  const handleSelectEquipment = (eq: PlacedEquipment, e: React.PointerEvent) => {
+  const handleSelectEquipment = (eq: PlacedEquipment, e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     if (selectedTool === 'eraser') {
       onUpdateEquipment(equipment.filter((item) => item.id !== eq.id));
       return;
     }
 
+    triggerHaptic();
     setSelectedId(eq.id);
     onSelectEquipment(eq);
     onSelectPlayer(null);
@@ -396,12 +454,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   };
 
   // Select/Delete Drawing
-  const handleSelectDrawing = (drawing: TacticalDrawing, e: React.PointerEvent) => {
+  const handleSelectDrawing = (drawing: TacticalDrawing, e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
     if (selectedTool === 'eraser') {
       onUpdateDrawings(drawings.filter((d) => d.id !== drawing.id));
       return;
     }
+    triggerHaptic();
     setSelectedId(drawing.id);
     onSelectDrawing(drawing);
     onSelectPlayer(null);
@@ -575,14 +634,24 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
                 <circle
                   cx={cp.x}
                   cy={cp.y}
-                  r="6"
+                  r="8"
                   fill="#38bdf8"
                   stroke="#ffffff"
-                  strokeWidth="2"
-                  className="cursor-move"
+                  strokeWidth="2.5"
+                  className="cursor-move touch-none tactical-draggable hover:scale-125 transition-transform"
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    triggerHaptic();
                     setDraggedItem({ type: 'curve_control', id, offsetX: 0, offsetY: 0 });
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic();
+                    setDraggedItem({ type: 'curve_control', id, offsetX: 0, offsetY: 0 });
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                   }}
                 />
               </g>
@@ -849,16 +918,24 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   const themeColors = getPitchColors();
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-[#03150d] p-0 m-0">
+    <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-[#03150d] p-0 m-0 touch-none">
       <svg
         ref={svgRef}
         viewBox={getViewBox()}
         preserveAspectRatio="none"
-        className="w-full h-full touch-none cursor-crosshair"
+        className="w-full h-full touch-none cursor-crosshair tactical-draggable"
+        onContextMenu={(e) => {
+          e.preventDefault();
+        }}
         onPointerDown={handlePitchPointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onTouchMove={(e) => {
+          if (draggedItem || rotatingPlayerId || currentDrawing) {
+            e.preventDefault();
+          }
+        }}
       >
         <defs>
           {/* Subtle field shadow */}
@@ -965,15 +1042,40 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         {/* --- 7. Placed Equipment Items --- */}
         {equipment.map((eq) => {
           const isSelected = selectedId === eq.id;
+          const isDragging = draggedItem?.type === 'equipment' && draggedItem?.id === eq.id;
           return (
             <g
               key={eq.id}
               id={`equipment-${eq.id}`}
-              transform={`translate(${eq.x}, ${eq.y}) rotate(${eq.rotation || 0})`}
-              className="cursor-grab active:cursor-grabbing select-none"
+              transform={`translate(${eq.x}, ${eq.y}) rotate(${eq.rotation || 0}) ${isDragging ? 'scale(1.2)' : 'scale(1)'}`}
+              className={`cursor-grab active:cursor-grabbing select-none touch-none tactical-draggable transition-transform duration-75 ${
+                isDragging ? 'tactical-dragging-node' : ''
+              }`}
               onPointerDown={(e) => handleSelectEquipment(eq, e)}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                handleSelectEquipment(eq, e as any);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
             >
-              {isSelected && (
+              {/* Dynamic Ground Elevation Shadow when Dragging */}
+              {isDragging && (
+                <ellipse
+                  cx="16"
+                  cy="32"
+                  rx="18"
+                  ry="6"
+                  fill="#000000"
+                  opacity="0.55"
+                  className="pointer-events-none"
+                />
+              )}
+
+              {/* Selection Ring */}
+              {isSelected && !isDragging && (
                 <circle
                   cx="16"
                   cy="16"
@@ -982,6 +1084,19 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
                   stroke="#38bdf8"
                   strokeWidth="2"
                   strokeDasharray="3 3"
+                />
+              )}
+
+              {/* Active Touch Drag Glow Ring */}
+              {isDragging && (
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="23"
+                  fill="none"
+                  stroke="#38bdf8"
+                  strokeWidth="2.5"
+                  className="animate-pulse"
                 />
               )}
               <EquipmentRenderer type={eq.type} isSelected={isSelected} />
@@ -995,6 +1110,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             key={player.id}
             player={player}
             isSelected={selectedId === player.id}
+            isDragging={draggedItem?.type === 'player' && draggedItem?.id === player.id}
             showPhotos={showPhotos}
             showNames={showNames}
             showNumbers={showNumbers}
