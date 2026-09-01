@@ -1,0 +1,6 @@
+{
+  "name": "MisterTactics - Lavagna Tattica",
+  "description": "Lavagna tattica professionale per allenatori di calcio con gestione rosa giocatori, volti personalizzati, attrezzatura e schede allenamento.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
