@@ -28,11 +28,11 @@ export const ToolbarEquipment: React.FC<ToolbarEquipmentProps> = ({
   onAddPlayer,
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-xs text-slate-300">
+    <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-slate-900 border-b border-slate-800 text-xs text-slate-300">
       {/* Left: Equipment & Training Items */}
       <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold pr-1">
-          + Attrezzatura:
+        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold pr-0.5">
+          + Attrezzi:
         </span>
 
         {EQUIPMENT_ITEMS.map((item) => (
@@ -53,12 +53,16 @@ export const ToolbarEquipment: React.FC<ToolbarEquipmentProps> = ({
       </div>
 
       {/* Right: Quick Player Spawning */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold pr-0.5 hidden xs:inline">
+          + Giocatori:
+        </span>
+
         {/* + POR */}
         <button
           id="btn-add-por"
           onClick={() => onAddPlayer('keeper', 'POR')}
-          className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] shadow-sm transition-transform active:scale-95"
+          className="flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] shadow-sm transition-transform active:scale-95"
           title="Aggiungi Portiere (POR)"
         >
           <Plus size={11} strokeWidth={3} />
@@ -69,7 +73,7 @@ export const ToolbarEquipment: React.FC<ToolbarEquipmentProps> = ({
         <button
           id="btn-add-blue"
           onClick={() => onAddPlayer('home', 'CC')}
-          className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] shadow-sm transition-transform active:scale-95"
+          className="flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] shadow-sm transition-transform active:scale-95"
           title="Aggiungi Giocatore Squadra Blu"
         >
           <Plus size={11} strokeWidth={3} />
@@ -80,7 +84,7 @@ export const ToolbarEquipment: React.FC<ToolbarEquipmentProps> = ({
         <button
           id="btn-add-red"
           onClick={() => onAddPlayer('away', 'CC')}
-          className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] shadow-sm transition-transform active:scale-95"
+          className="flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] shadow-sm transition-transform active:scale-95"
           title="Aggiungi Giocatore Squadra Rossa (Avversario)"
         >
           <Plus size={11} strokeWidth={3} />
@@ -91,7 +95,7 @@ export const ToolbarEquipment: React.FC<ToolbarEquipmentProps> = ({
         <button
           id="btn-add-jolly"
           onClick={() => onAddPlayer('jolly', 'JOL')}
-          className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] shadow-sm transition-transform active:scale-95"
+          className="flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] shadow-sm transition-transform active:scale-95"
           title="Aggiungi Giocatore Jolly (Giallo)"
         >
           <Plus size={11} strokeWidth={3} />

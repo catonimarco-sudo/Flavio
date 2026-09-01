@@ -68,7 +68,7 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
   onCycleJerseyStyle,
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-xs text-slate-300">
+    <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-slate-900 border-b border-slate-800 text-xs text-slate-300">
       {/* Pitch Sections */}
       <div className="flex items-center gap-1 flex-wrap">
         <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold pr-0.5 flex items-center gap-1">
@@ -92,7 +92,7 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
       </div>
 
       {/* Formations, Department Lines & Player Displays */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
         {/* Modulo Dropdown */}
         <div className="flex items-center gap-1 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">
           <span className="font-bold text-amber-400">Modulo:</span>
@@ -108,22 +108,22 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
             className="bg-transparent text-slate-200 text-[10px] outline-none cursor-pointer font-medium"
           >
             <option value="" disabled className="bg-slate-900 text-slate-400">
-              Applica Modulo...
+              Modulo...
             </option>
             <option value="4-2-3-1" className="bg-slate-900 text-slate-200">
-              4-2-3-1 (Costruzione & Trequarti)
+              4-2-3-1
             </option>
             <option value="4-3-3" className="bg-slate-900 text-slate-200">
-              4-3-3 (Regista & 2 Ali)
+              4-3-3
             </option>
             <option value="3-5-2" className="bg-slate-900 text-slate-200">
-              3-5-2 (3 Centrali & 2 Quinti)
+              3-5-2
             </option>
             <option value="4-4-2" className="bg-slate-900 text-slate-200">
-              4-4-2 (Lineare & Compatto)
+              4-4-2
             </option>
             <option value="3-4-3" className="bg-slate-900 text-slate-200">
-              3-4-3 (Tridente Offensivo)
+              3-4-3
             </option>
           </select>
         </div>

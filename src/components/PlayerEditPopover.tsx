@@ -57,7 +57,7 @@ export const PlayerEditPopover: React.FC<PlayerEditPopoverProps> = ({
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl p-4 w-80 text-xs text-slate-200 animate-in slide-in-from-bottom-5 duration-200">
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl p-3.5 sm:p-4 sm:w-80 max-w-[calc(100vw-2rem)] text-xs text-slate-200 animate-in slide-in-from-bottom-5 duration-200">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
         <div className="flex items-center gap-2">

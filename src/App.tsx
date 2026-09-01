@@ -28,6 +28,7 @@ import { PresetsModal } from './components/PresetsModal';
 import { ExportModal } from './components/ExportModal';
 import { PlayerEditPopover } from './components/PlayerEditPopover';
 import { AnimationControls } from './components/AnimationControls';
+import { X } from 'lucide-react';
 
 const STORAGE_KEY = 'mister_tactics_state_v1';
 
@@ -690,21 +691,38 @@ export default function App() {
 
       {/* 6. Main Interactive Workspace (Sidebars + Pitch) */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Docked Sidebar: Rosa Squadra & Quick Deployment */}
+        {/* Left Sidebar Backdrop on Mobile */}
         {showSquadSidebar && (
-          <aside className="w-60 lg:w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-xs select-none z-10 animate-in slide-in-from-left duration-200">
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs"
+            onClick={() => setShowSquadSidebar(false)}
+          />
+        )}
+
+        {/* Left Docked Sidebar / Mobile Drawer: Rosa Squadra */}
+        {showSquadSidebar && (
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] md:relative md:inset-auto md:w-60 lg:w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-xs select-none shadow-2xl md:shadow-none animate-in slide-in-from-left duration-200">
             <div className="p-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
               <div className="flex items-center gap-1.5 font-bold text-slate-200">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                 <span className="font-mono uppercase text-[11px] tracking-wider">Rosa Titolari</span>
                 <span className="text-[10px] text-slate-400 font-mono">({squad.length})</span>
               </div>
-              <button
-                onClick={() => setIsSquadModalOpen(true)}
-                className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline underline-offset-2"
-              >
-                Gestisci
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSquadModalOpen(true)}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline underline-offset-2"
+                >
+                  Gestisci
+                </button>
+                <button
+                  onClick={() => setShowSquadSidebar(false)}
+                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                  title="Chiudi pannello"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
 
             {/* High Density Player List */}
@@ -714,7 +732,10 @@ export default function App() {
                 return (
                   <div
                     key={player.id}
-                    onClick={() => handleSpawnPlayerFromSquad(player, 'home')}
+                    onClick={() => {
+                      handleSpawnPlayerFromSquad(player, 'home');
+                      // On small screens, keep drawer open or let user place multiple
+                    }}
                     className={`flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer group ${
                       isPlaced
                         ? 'bg-blue-950/30 border-blue-900/60 text-slate-200'
@@ -769,95 +790,114 @@ export default function App() {
           </aside>
         )}
 
-        {/* Central Tactical Pitch Canvas - Edge-to-Edge Length */}
-        <main className="flex-1 relative overflow-hidden flex flex-col p-0 bg-slate-950">
+        {/* Central Tactical Pitch Canvas - Edge-to-Edge Length with Overflow Scrolling */}
+        <main className="flex-1 relative overflow-hidden flex flex-col p-0 bg-slate-950 min-w-0">
           {/* Top Canvas Technical Badge */}
-          <div className="flex items-center justify-between px-3 py-1 bg-slate-950/80 border-b border-slate-800/80 text-[10px] font-mono text-slate-400 select-none">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1 bg-slate-950/80 border-b border-slate-800/80 text-[9px] sm:text-[10px] font-mono text-slate-400 select-none gap-1">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-emerald-400 font-bold">// WORKSTATION ACTIVE</span>
-              <span className="text-slate-600">•</span>
-              <span>CAMPO: {pitchSection.toUpperCase()}</span>
+              <span className="text-slate-600 hidden xs:inline">•</span>
+              <span className="hidden xs:inline">CAMPO: {pitchSection.toUpperCase()}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span>GIOCATORI: {players.length}</span>
               <span className="text-slate-600">•</span>
               <span>ATTREZZI: {equipment.length}</span>
-              <span className="text-slate-600">•</span>
-              <span>TRACCIATI: {drawings.length}</span>
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              <span className="hidden sm:inline">TRACCIATI: {drawings.length}</span>
             </div>
           </div>
 
-          <div className="flex-1 relative flex items-center justify-center overflow-hidden w-full h-full">
-            <TacticalPitch
-              pitchRef={pitchSvgRef}
-              players={players}
-              equipment={equipment}
-              drawings={drawings}
-              selectedTool={selectedTool}
-              selectedColor={selectedColor}
-              strokeWidth={strokeWidth}
-              pitchSection={pitchSection}
-              pitchTheme={pitchTheme}
-              showHalfSpaces={showHalfSpaces}
-              showDepartmentLines={showDepartmentLines}
-              showPhotos={showPhotos}
-              showNames={showNames}
-              showNumbers={showNumbers}
-              showRoles={showRoles}
-              showOrientation={showOrientation}
-              jerseyStyle={jerseyStyle}
-              onUpdatePlayers={(updated) => {
-                recordHistory();
-                updatePlayersWithStep(updated);
-              }}
-              onUpdateEquipment={(updated) => {
-                recordHistory();
-                updateEquipmentWithStep(updated);
-              }}
-              onUpdateDrawings={(updated) => {
-                recordHistory();
-                updateDrawingsWithStep(updated);
-              }}
-              onSelectPlayer={(p) => setSelectedPlayer(p)}
-              onSelectEquipment={(eq) => setSelectedEquipment(eq)}
-              onSelectDrawing={(d) => setSelectedDrawing(d)}
-              onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
-            />
-
-            {/* Quick Player Edit Popover on selection */}
-            {selectedPlayer && (
-              <PlayerEditPopover
-                player={selectedPlayer}
-                onClose={() => setSelectedPlayer(null)}
-                onUpdatePlayer={(updated) => {
+          <div className="flex-1 relative flex items-center justify-center overflow-x-auto overflow-y-hidden w-full h-full min-w-0">
+            <div className="w-full h-full min-w-[480px] sm:min-w-[620px] md:min-w-0 flex items-center justify-center relative">
+              <TacticalPitch
+                pitchRef={pitchSvgRef}
+                players={players}
+                equipment={equipment}
+                drawings={drawings}
+                selectedTool={selectedTool}
+                selectedColor={selectedColor}
+                strokeWidth={strokeWidth}
+                pitchSection={pitchSection}
+                pitchTheme={pitchTheme}
+                showHalfSpaces={showHalfSpaces}
+                showDepartmentLines={showDepartmentLines}
+                showPhotos={showPhotos}
+                showNames={showNames}
+                showNumbers={showNumbers}
+                showRoles={showRoles}
+                showOrientation={showOrientation}
+                jerseyStyle={jerseyStyle}
+                onUpdatePlayers={(updated) => {
                   recordHistory();
-                  updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                  setSelectedPlayer(updated);
+                  updatePlayersWithStep(updated);
                 }}
-                onRemovePlayer={(id) => {
+                onUpdateEquipment={(updated) => {
                   recordHistory();
-                  updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
-                  setSelectedPlayer(null);
+                  updateEquipmentWithStep(updated);
                 }}
+                onUpdateDrawings={(updated) => {
+                  recordHistory();
+                  updateDrawingsWithStep(updated);
+                }}
+                onSelectPlayer={(p) => setSelectedPlayer(p)}
+                onSelectEquipment={(eq) => setSelectedEquipment(eq)}
+                onSelectDrawing={(d) => setSelectedDrawing(d)}
+                onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
               />
-            )}
+
+              {/* Quick Player Edit Popover on selection */}
+              {selectedPlayer && (
+                <PlayerEditPopover
+                  player={selectedPlayer}
+                  onClose={() => setSelectedPlayer(null)}
+                  onUpdatePlayer={(updated) => {
+                    recordHistory();
+                    updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                    setSelectedPlayer(updated);
+                  }}
+                  onRemovePlayer={(id) => {
+                    recordHistory();
+                    updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
+                    setSelectedPlayer(null);
+                  }}
+                />
+              )}
+            </div>
           </div>
         </main>
 
-        {/* Right Docked Sidebar: Sessione Allenamento & Obiettivi */}
+        {/* Right Sidebar Backdrop on Mobile */}
         {showSessionSidebar && (
-          <aside className="w-64 lg:w-72 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 text-xs select-none z-10 animate-in slide-in-from-right duration-200">
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs"
+            onClick={() => setShowSessionSidebar(false)}
+          />
+        )}
+
+        {/* Right Docked Sidebar / Mobile Drawer: Sessione Allenamento & Obiettivi */}
+        {showSessionSidebar && (
+          <aside className="fixed inset-y-0 right-0 z-50 w-72 max-w-[85vw] md:relative md:inset-auto md:w-64 lg:w-72 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 text-xs select-none shadow-2xl md:shadow-none animate-in slide-in-from-right duration-200">
             <div className="p-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
               <div className="flex items-center gap-1.5 font-bold text-slate-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span className="font-mono uppercase text-[11px] tracking-wider">Seduta Allenamento</span>
               </div>
-              <button
-                onClick={() => setIsDrillModalOpen(true)}
-                className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2"
-              >
-                Modifica
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsDrillModalOpen(true)}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2"
+                >
+                  Modifica
+                </button>
+                <button
+                  onClick={() => setShowSessionSidebar(false)}
+                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800"
+                  title="Chiudi pannello"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-3">

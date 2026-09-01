@@ -72,14 +72,14 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
   const [showClearMenu, setShowClearMenu] = useState(false);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-xs text-slate-200">
+    <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-slate-900 border-b border-slate-800 text-xs text-slate-200">
       {/* Group 1: Drawing & Action Tools */}
       <div className="flex items-center gap-1 flex-wrap">
         {/* Sposta / Select */}
         <button
           id="tool-select"
           onClick={() => onSelectTool('select')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-semibold transition-colors ${
             selectedTool === 'select'
               ? 'bg-blue-600 text-white shadow-sm'
               : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
@@ -96,7 +96,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-run"
           onClick={() => onSelectTool('run_arrow')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'run_arrow'
               ? 'bg-amber-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -111,7 +111,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-pass"
           onClick={() => onSelectTool('pass_arrow')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'pass_arrow'
               ? 'bg-blue-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -126,7 +126,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-dribble"
           onClick={() => onSelectTool('dribble_arrow')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'dribble_arrow'
               ? 'bg-emerald-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -141,7 +141,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-curve"
           onClick={() => onSelectTool('curve_arrow')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'curve_arrow'
               ? 'bg-indigo-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -156,7 +156,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-press"
           onClick={() => onSelectTool('press_arrow')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'press_arrow'
               ? 'bg-red-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -171,7 +171,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-line"
           onClick={() => onSelectTool('line')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'line'
               ? 'bg-slate-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -186,7 +186,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-freehand"
           onClick={() => onSelectTool('freehand')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'freehand'
               ? 'bg-purple-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -201,7 +201,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-zone"
           onClick={() => onSelectTool('zone_rect')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'zone_rect'
               ? 'bg-amber-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -216,7 +216,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-circle"
           onClick={() => onSelectTool('zone_circle')}
-          className={`p-1 rounded text-[11px] font-medium transition-colors ${
+          className={`p-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'zone_circle'
               ? 'bg-amber-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -230,7 +230,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-text"
           onClick={() => onSelectTool('text')}
-          className={`p-1 rounded text-[11px] font-medium transition-colors ${
+          className={`p-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'text'
               ? 'bg-cyan-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -244,7 +244,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-eraser"
           onClick={() => onSelectTool('eraser')}
-          className={`p-1 rounded text-[11px] font-medium transition-colors ${
+          className={`p-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'eraser'
               ? 'bg-rose-600 text-white'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
@@ -262,7 +262,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
           onClick={onUndo}
           disabled={!canUndo}
           className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 border border-slate-700/50"
-          title="Annulla ultima azione (Ctrl+Z)"
+          title="Annulla ultima azione"
         >
           <Undo2 size={12} />
         </button>
@@ -271,7 +271,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
           onClick={onRedo}
           disabled={!canRedo}
           className="p-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 border border-slate-700/50"
-          title="Ripeti azione (Ctrl+Y)"
+          title="Ripeti azione"
         >
           <Redo2 size={12} />
         </button>
@@ -281,7 +281,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
           <button
             id="btn-clear-all"
             onClick={() => setShowClearMenu(!showClearMenu)}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-red-950/60 hover:bg-red-900/80 border border-red-800/60 text-red-300 text-[11px] font-semibold"
+            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded bg-red-950/60 hover:bg-red-900/80 border border-red-800/60 text-red-300 text-[10px] sm:text-[11px] font-semibold"
           >
             <Trash2 size={11} />
             <span>Svuota</span>
@@ -332,12 +332,12 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
       </div>
 
       {/* Group 2: Half-Spaces, Color Palette, Stroke Width */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
         {/* Toggle 5 Canali & Half-Spaces */}
         <button
           id="btn-toggle-halfspaces"
           onClick={onToggleHalfSpaces}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border font-medium transition-all ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] border font-medium transition-all ${
             showHalfSpaces
               ? 'bg-amber-950/70 border-amber-500/80 text-amber-300'
               : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200'
@@ -349,12 +349,12 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         </button>
 
         {/* Color Palette */}
-        <div className="flex items-center gap-1 bg-slate-950 px-1.5 py-0.5 rounded-full border border-slate-800">
+        <div className="flex items-center gap-1 bg-slate-950 px-1.5 py-0.5 rounded-full border border-slate-800 overflow-x-auto max-w-[150px] sm:max-w-none">
           {COLORS.map((c) => (
             <button
               key={c.hex}
               onClick={() => onSelectColor(c.hex)}
-              className={`w-3.5 h-3.5 rounded-full transition-transform ${
+              className={`w-3.5 h-3.5 rounded-full shrink-0 transition-transform ${
                 selectedColor === c.hex
                   ? 'ring-2 ring-white scale-110 shadow-sm'
                   : 'hover:scale-105 opacity-80 hover:opacity-100'
@@ -367,7 +367,7 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
 
         {/* Stroke Width Selector */}
         <div className="flex items-center gap-0.5 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">
-          <span className="text-slate-400 pr-0.5">Spessore:</span>
+          <span className="text-slate-400 pr-0.5 hidden xs:inline">Spessore:</span>
           {STROKE_WIDTHS.map((sw) => (
             <button
               key={sw.value}
