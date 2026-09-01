@@ -66,19 +66,30 @@ export default function App() {
   const [squad, setSquad] = useState<Player[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_squad`);
-      return saved ? JSON.parse(saved) : INITIAL_SQUAD;
+      return saved !== null ? JSON.parse(saved) : INITIAL_SQUAD;
     } catch {
       return INITIAL_SQUAD;
     }
   });
 
-  const [tacticTitle, setTacticTitle] = useState<string>(
-    'Costruzione Tattica e Sviluppo per Reparti (4-2-3-1)'
-  );
+  const [tacticTitle, setTacticTitle] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_tactic_title`);
+      return saved !== null ? saved : 'Costruzione Tattica e Sviluppo per Reparti (4-2-3-1)';
+    } catch {
+      return 'Costruzione Tattica e Sviluppo per Reparti (4-2-3-1)';
+    }
+  });
 
   const [drillSheet, setDrillSheet] = useState<DrillSheet>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_drill_sheet`);
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+    } catch {}
     return (
-      PRESET_TACTICS[0].drillSheet as DrillSheet || {
+      (PRESET_TACTICS[0].drillSheet as DrillSheet) || {
         id: 'drill-1',
         title: 'Costruzione Tattica e Sviluppo per Reparti (4-2-3-1)',
         category: 'Tattica Collettiva',
@@ -96,16 +107,37 @@ export default function App() {
     );
   });
 
-  // Pitch state with automatic coordinate sanitation
+  // Pitch state with automatic coordinate sanitation and localStorage persistence
   const [players, setPlayers] = useState<PlacedPlayer[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_players`);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.map(sanitizeCoords) : [];
+      }
+    } catch {}
     return (PRESET_TACTICS[0].players || []).map(sanitizeCoords);
   });
 
   const [equipment, setEquipment] = useState<PlacedEquipment[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_equipment`);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.map(sanitizeCoords) : [];
+      }
+    } catch {}
     return (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords);
   });
 
   const [drawings, setDrawings] = useState<TacticalDrawing[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_drawings`);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.map(sanitizeDrawing) : [];
+      }
+    } catch {}
     return (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing);
   });
 
@@ -150,36 +182,54 @@ export default function App() {
     { players: PlacedPlayer[]; equipment: PlacedEquipment[]; drawings: TacticalDrawing[] }[]
   >([]);
 
-  // Animation Steps state
+  // Animation Controls State
   const [showAnimationBar, setShowAnimationBar] = useState(true);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isPlayingAnimation, setIsPlayingAnimation] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(1);
 
-  const [animationSteps, setAnimationSteps] = useState<AnimationStep[]>([
-    {
-      id: 'step-1',
-      name: 'Fase 1 (Inizio)',
-      players: (PRESET_TACTICS[0].players || []).map(sanitizeCoords),
-      equipment: (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords),
-      drawings: (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing),
-      durationMs: 1500,
-    },
-    {
-      id: 'step-2',
-      name: 'Fase 2 (Sviluppo)',
-      players: (PRESET_TACTICS[0].players || []).map((p) => {
-        const clean = sanitizeCoords(p);
-        return {
-          ...clean,
-          x: Math.min(1000, clean.x + (clean.team === 'home' ? 80 : -40)),
-        };
-      }),
-      equipment: (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords),
-      drawings: (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing),
-      durationMs: 1500,
-    },
-  ]);
+  // Animation Steps state with localStorage persistence
+  const [animationSteps, setAnimationSteps] = useState<AnimationStep[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_animation_steps`);
+      if (saved !== null) {
+        const parsed: AnimationStep[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((step) => ({
+            ...step,
+            players: (step.players || []).map(sanitizeCoords),
+            equipment: (step.equipment || []).map(sanitizeCoords),
+            drawings: (step.drawings || []).map(sanitizeDrawing),
+          }));
+        }
+      }
+    } catch {}
+
+    return [
+      {
+        id: 'step-1',
+        name: 'Fase 1 (Inizio)',
+        players: (PRESET_TACTICS[0].players || []).map(sanitizeCoords),
+        equipment: (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords),
+        drawings: (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing),
+        durationMs: 1500,
+      },
+      {
+        id: 'step-2',
+        name: 'Fase 2 (Sviluppo)',
+        players: (PRESET_TACTICS[0].players || []).map((p) => {
+          const clean = sanitizeCoords(p);
+          return {
+            ...clean,
+            x: Math.min(1000, clean.x + (clean.team === 'home' ? 80 : -40)),
+          };
+        }),
+        equipment: (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords),
+        drawings: (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing),
+        durationMs: 1500,
+      },
+    ];
+  });
 
   const pitchSvgRef = useRef<SVGSVGElement | null>(null);
 
@@ -233,14 +283,58 @@ export default function App() {
     });
   }, [activeStepIndex]);
 
-  // Save squad changes to localStorage
+  // Auto-persist all board states to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(`${STORAGE_KEY}_squad`, JSON.stringify(squad));
     } catch (e) {
-      console.warn('localStorage error:', e);
+      console.warn('localStorage error for squad:', e);
     }
   }, [squad]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_players`, JSON.stringify(players));
+    } catch (e) {
+      console.warn('localStorage error for players:', e);
+    }
+  }, [players]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_equipment`, JSON.stringify(equipment));
+    } catch (e) {
+      console.warn('localStorage error for equipment:', e);
+    }
+  }, [equipment]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_drawings`, JSON.stringify(drawings));
+    } catch (e) {
+      console.warn('localStorage error for drawings:', e);
+    }
+  }, [drawings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_animation_steps`, JSON.stringify(animationSteps));
+    } catch (e) {
+      console.warn('localStorage error for animationSteps:', e);
+    }
+  }, [animationSteps]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_tactic_title`, tacticTitle);
+    } catch (e) {}
+  }, [tacticTitle]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_drill_sheet`, JSON.stringify(drillSheet));
+    } catch (e) {}
+  }, [drillSheet]);
 
   // Undo / Redo handlers
   const handleUndo = () => {
@@ -831,7 +925,14 @@ export default function App() {
         isOpen={isSquadModalOpen}
         onClose={() => setIsSquadModalOpen(false)}
         squad={squad}
-        onUpdateSquad={setSquad}
+        onUpdateSquad={(newSquad) => {
+          setSquad(newSquad);
+          // If any squad players were removed, also remove them from the tactical pitch & animation steps
+          const remainingIds = new Set(newSquad.map((p) => p.id));
+          updatePlayersWithStep((prev) =>
+            prev.filter((p) => !p.squadPlayerId || remainingIds.has(p.squadPlayerId))
+          );
+        }}
         onSpawnPlayerToPitch={handleSpawnPlayerFromSquad}
       />
 
