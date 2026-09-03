@@ -22,6 +22,8 @@ export type Role =
 
 export type TeamColor = 'blue' | 'red' | 'yellow' | 'green' | 'black' | 'white' | 'purple' | 'orange';
 
+export type JerseyStyle = 'fullbody_3d' | 'realistic' | 'shirt' | 'circle' | 'vest';
+
 export interface Player {
   id: string;
   name: string;
@@ -29,6 +31,9 @@ export interface Player {
   role: Role;
   team: 'home' | 'away' | 'jolly' | 'keeper' | 'referee';
   customColor?: string;
+  secondaryColor?: string;
+  sponsorText?: string;
+  jerseyImageUrl?: string; // custom uploaded jersey / shirt texture or image (data URL or external URL)
   photoUrl?: string; // photo avatar URL or data URI
   avatarType?: 'photo' | 'initials' | 'number' | 'face_avatar';
   preferredFoot?: 'Destro' | 'Sinistro' | 'Ambidestro';

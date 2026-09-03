@@ -16,6 +16,7 @@ import {
   AnimationStep,
   PitchSection,
   PitchTheme,
+  JerseyStyle,
 } from '../types';
 
 export interface CloudTacticData {
@@ -29,7 +30,7 @@ export interface CloudTacticData {
   animationSteps?: AnimationStep[];
   pitchSection?: PitchSection;
   pitchTheme?: PitchTheme;
-  jerseyStyle?: 'shirt' | 'circle' | 'vest';
+  jerseyStyle?: JerseyStyle;
   updatedAt?: Timestamp | ReturnType<typeof serverTimestamp>;
   deviceOrigin?: string;
 }

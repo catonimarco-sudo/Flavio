@@ -64,12 +64,14 @@ export const SquadModal: React.FC<SquadModalProps> = ({
   const [formRole, setFormRole] = useState<Role>('TRQ');
   const [formTeam, setFormTeam] = useState<'home' | 'away' | 'jolly' | 'keeper' | 'referee'>('home');
   const [formPhotoUrl, setFormPhotoUrl] = useState<string>('');
+  const [formJerseyUrl, setFormJerseyUrl] = useState<string>('');
   const [formFoot, setFormFoot] = useState<'Destro' | 'Sinistro' | 'Ambidestro'>('Destro');
   const [formAge, setFormAge] = useState<number>(24);
   const [formNotes, setFormNotes] = useState<string>('');
 
   const [selectedFacePresetId, setSelectedFacePresetId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const jerseyFileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
@@ -82,6 +84,7 @@ export const SquadModal: React.FC<SquadModalProps> = ({
     setFormRole('CC');
     setFormTeam('home');
     setFormPhotoUrl(generateFaceSvg(FACE_PRESETS[0]));
+    setFormJerseyUrl('');
     setSelectedFacePresetId(FACE_PRESETS[0].id);
     setFormFoot('Destro');
     setFormAge(24);
@@ -97,6 +100,7 @@ export const SquadModal: React.FC<SquadModalProps> = ({
     setFormRole(player.role);
     setFormTeam(player.team);
     setFormPhotoUrl(player.photoUrl || '');
+    setFormJerseyUrl(player.jerseyImageUrl || '');
     setFormFoot(player.preferredFoot || 'Destro');
     setFormAge(player.age || 24);
     setFormNotes(player.notes || '');
@@ -110,6 +114,20 @@ export const SquadModal: React.FC<SquadModalProps> = ({
       reader.onload = (event) => {
         if (event.target?.result) {
           setFormPhotoUrl(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle Jersey File Upload
+  const handleJerseyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormJerseyUrl(event.target.result as string);
         }
       };
       reader.readAsDataURL(file);
@@ -137,6 +155,7 @@ export const SquadModal: React.FC<SquadModalProps> = ({
         team: formRole === 'POR' ? 'keeper' : formTeam,
         avatarType: 'photo',
         photoUrl: formPhotoUrl || generateFaceSvg(FACE_PRESETS[0]),
+        jerseyImageUrl: formJerseyUrl || undefined,
         preferredFoot: formFoot,
         age: Number(formAge) || 20,
         notes: formNotes.trim(),
@@ -153,6 +172,7 @@ export const SquadModal: React.FC<SquadModalProps> = ({
               role: formRole,
               team: formRole === 'POR' ? 'keeper' : formTeam,
               photoUrl: formPhotoUrl || p.photoUrl,
+              jerseyImageUrl: formJerseyUrl || p.jerseyImageUrl,
               preferredFoot: formFoot,
               age: Number(formAge) || p.age,
               notes: formNotes.trim(),
@@ -331,6 +351,14 @@ export const SquadModal: React.FC<SquadModalProps> = ({
                           >
                             {player.role}
                           </span>
+                          {player.jerseyImageUrl && (
+                            <span
+                              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-600/40 text-[9px] font-semibold"
+                              title="Maglia grafica personalizzata attiva"
+                            >
+                              <Shirt size={9} /> Divisa
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                           <span>Piede: {player.preferredFoot || 'Destro'}</span>
@@ -468,6 +496,54 @@ export const SquadModal: React.FC<SquadModalProps> = ({
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Jersey / Kit Image Upload */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Shirt size={13} className="text-amber-400" /> Maglia Divisa Personalizzata
+                    </span>
+                    {formJerseyUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFormJerseyUrl('')}
+                        className="text-[10px] text-red-400 hover:text-red-300 font-medium"
+                      >
+                        Rimuovi maglia
+                      </button>
+                    )}
+                  </label>
+
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0">
+                      {formJerseyUrl ? (
+                        <img src={formJerseyUrl} alt="Maglia" className="w-full h-full object-cover" />
+                      ) : (
+                        <Shirt size={22} className="text-slate-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <input
+                        type="file"
+                        ref={jerseyFileInputRef}
+                        accept="image/*"
+                        onChange={handleJerseyFileUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => jerseyFileInputRef.current?.click()}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-colors"
+                      >
+                        <Upload size={12} className="text-amber-400" />
+                        <span>{formJerseyUrl ? 'Cambia Foto Maglia' : 'Carica Foto Maglia'}</span>
+                      </button>
+                      <p className="text-[9.5px] text-slate-500 text-center">
+                        PNG, JPG o texture divisa del club
+                      </p>
                     </div>
                   </div>
                 </div>

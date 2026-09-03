@@ -7,6 +7,7 @@ import {
   PitchSection,
   PitchTheme,
   DrawingPoint,
+  JerseyStyle,
 } from '../types';
 import { PlayerPitchNode } from './PlayerPitchNode';
 import { EquipmentRenderer } from './EquipmentIcons';
@@ -27,7 +28,7 @@ interface TacticalPitchProps {
   showNumbers: boolean;
   showRoles: boolean;
   showOrientation: boolean;
-  jerseyStyle: 'shirt' | 'circle' | 'vest';
+  jerseyStyle: JerseyStyle;
   onUpdatePlayers: (players: PlacedPlayer[]) => void;
   onUpdateEquipment: (equipment: PlacedEquipment[]) => void;
   onUpdateDrawings: (drawings: TacticalDrawing[]) => void;
@@ -35,6 +36,8 @@ interface TacticalPitchProps {
   onSelectEquipment: (eq: PlacedEquipment | null) => void;
   onSelectDrawing: (drawing: TacticalDrawing | null) => void;
   onPlayerDoubleClick?: (player: PlacedPlayer) => void;
+  onOpen3DStudio?: (player: PlacedPlayer) => void;
+  onRotatePlayerQuick?: (playerId: string, deltaDeg: number) => void;
   pitchRef?: React.RefObject<SVGSVGElement | null>;
 }
 
@@ -62,6 +65,8 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   onSelectEquipment,
   onSelectDrawing,
   onPlayerDoubleClick,
+  onOpen3DStudio,
+  onRotatePlayerQuick,
   pitchRef: externalPitchRef,
 }) => {
   const internalPitchRef = useRef<SVGSVGElement | null>(null);
@@ -1119,6 +1124,19 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             jerseyStyle={jerseyStyle}
             onSelect={handleSelectPlayer}
             onStartRotate={handleStartRotate}
+            onRotateQuick={(id, delta) => {
+              if (onRotatePlayerQuick) {
+                onRotatePlayerQuick(id, delta);
+              } else {
+                const updated = players.map((p) => {
+                  if (p.id !== id) return p;
+                  const newRot = (((p.rotation || 0) + delta) % 360 + 360) % 360;
+                  return { ...p, rotation: Math.round(newRot) };
+                });
+                onUpdatePlayers(updated);
+              }
+            }}
+            onOpen3DStudio={onOpen3DStudio}
             onDoubleClick={onPlayerDoubleClick}
           />
         ))}

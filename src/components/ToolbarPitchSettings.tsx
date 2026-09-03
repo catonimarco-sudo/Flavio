@@ -1,5 +1,5 @@
 import React from 'react';
-import { PitchSection, PitchTheme } from '../types';
+import { PitchSection, PitchTheme, JerseyStyle } from '../types';
 import {
   Maximize,
   Shield,
@@ -31,7 +31,7 @@ interface ToolbarPitchSettingsProps {
   onToggleRoles: () => void;
   showOrientation: boolean;
   onToggleOrientation: () => void;
-  jerseyStyle: 'shirt' | 'circle' | 'vest';
+  jerseyStyle: JerseyStyle;
   onCycleJerseyStyle: () => void;
 }
 
@@ -147,11 +147,29 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
         <button
           id="btn-cycle-jersey"
           onClick={onCycleJerseyStyle}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium text-[10px]"
-          title="Cambia grafica giocatore: Maglia classica o Cerchio minimal"
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold transition-all shadow-sm ${
+            jerseyStyle === 'realistic'
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+              : jerseyStyle === 'shirt'
+              ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 hover:bg-blue-600/30'
+              : jerseyStyle === 'vest'
+              ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
+              : 'bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-300'
+          }`}
+          title="Cambia grafica giocatori: 3D Realistica, Maglia 2D, Pettorine o Cerchio"
         >
-          <Shirt size={11} className="text-blue-400" />
-          <span>Maglie</span>
+          <Shirt size={12} className={jerseyStyle === 'fullbody_3d' || jerseyStyle === 'realistic' ? 'text-amber-400' : 'text-blue-400'} />
+          <span>
+            {jerseyStyle === 'fullbody_3d'
+              ? 'Figura: 3D HD (Intera)'
+              : jerseyStyle === 'realistic'
+              ? 'Figura: Mezzo Busto'
+              : jerseyStyle === 'shirt'
+              ? 'Maglie: Classica'
+              : jerseyStyle === 'vest'
+              ? 'Pettorine'
+              : 'Cerchi'}
+          </span>
         </button>
 
         {/* Player Toggles: Nomi, Numeri, Foto, Ruoli, Sguardo */}

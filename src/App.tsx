@@ -12,6 +12,7 @@ import {
   PresetTactic,
   AnimationStep,
   EquipmentType,
+  JerseyStyle,
 } from './types';
 import { INITIAL_SQUAD, INITIAL_AWAY_SQUAD } from './data/defaultPlayers';
 import { PRESET_TACTICS } from './data/presetTactics';
@@ -27,8 +28,10 @@ import { DrillSheetModal } from './components/DrillSheetModal';
 import { PresetsModal } from './components/PresetsModal';
 import { ExportModal } from './components/ExportModal';
 import { PlayerEditPopover } from './components/PlayerEditPopover';
+import { Player3DStudioModal } from './components/Player3DStudioModal';
+import { Broadcast3DPitch } from './components/Broadcast3DPitch';
 import { AnimationControls } from './components/AnimationControls';
-import { X } from 'lucide-react';
+import { X, Sparkles, Layers, Eye } from 'lucide-react';
 import { CloudSyncStatus } from './components/Header';
 import {
   saveTacticToCloud,
@@ -166,7 +169,8 @@ export default function App() {
   const [showNumbers, setShowNumbers] = useState<boolean>(true);
   const [showRoles, setShowRoles] = useState<boolean>(true);
   const [showOrientation, setShowOrientation] = useState<boolean>(true);
-  const [jerseyStyle, setJerseyStyle] = useState<'shirt' | 'circle' | 'vest'>('shirt');
+  const [jerseyStyle, setJerseyStyle] = useState<JerseyStyle>('fullbody_3d');
+  const [viewMode, setViewMode] = useState<'3d_broadcast' | '2d_tactical'>('3d_broadcast');
 
   // Layout toggles (Default closed for maximized pitch view)
   const [showSquadSidebar, setShowSquadSidebar] = useState<boolean>(false);
@@ -176,6 +180,9 @@ export default function App() {
   const [selectedPlayer, setSelectedPlayer] = useState<PlacedPlayer | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<PlacedEquipment | null>(null);
   const [selectedDrawing, setSelectedDrawing] = useState<TacticalDrawing | null>(null);
+
+  // 3D Player Studio State
+  const [editingPlayer3D, setEditingPlayer3D] = useState<PlacedPlayer | null>(null);
 
   // Modals
   const [isSquadModalOpen, setIsSquadModalOpen] = useState(false);
@@ -852,7 +859,13 @@ export default function App() {
         onToggleOrientation={() => setShowOrientation(!showOrientation)}
         jerseyStyle={jerseyStyle}
         onCycleJerseyStyle={() =>
-          setJerseyStyle((prev) => (prev === 'shirt' ? 'circle' : 'shirt'))
+          setJerseyStyle((prev) => {
+            if (prev === 'fullbody_3d') return 'realistic';
+            if (prev === 'realistic') return 'shirt';
+            if (prev === 'shirt') return 'vest';
+            if (prev === 'vest') return 'circle';
+            return 'fullbody_3d';
+          })
         }
       />
 
@@ -959,13 +972,41 @@ export default function App() {
 
         {/* Central Tactical Pitch Canvas - Edge-to-Edge Length with Overflow Scrolling */}
         <main className="flex-1 relative overflow-hidden flex flex-col p-0 bg-slate-950 min-w-0">
-          {/* Top Canvas Technical Badge */}
-          <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1 bg-slate-950/80 border-b border-slate-800/80 text-[9px] sm:text-[10px] font-mono text-slate-400 select-none gap-1">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-emerald-400 font-bold">// WORKSTATION ACTIVE</span>
-              <span className="text-slate-600 hidden xs:inline">•</span>
-              <span className="hidden xs:inline">CAMPO: {pitchSection.toUpperCase()}</span>
+          {/* Top Canvas Technical Badge & View Switcher */}
+          <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1.5 bg-slate-950/90 border-b border-slate-800/80 text-[9px] sm:text-[10px] font-mono text-slate-400 select-none gap-2">
+            <div className="flex items-center gap-2">
+              {/* Primary Visual Mode Switcher: 3D Broadcast (Photo EA FC style) vs 2D Tactical */}
+              <div className="flex items-center bg-slate-900 p-0.5 rounded-xl border border-slate-700/80 shadow-inner">
+                <button
+                  onClick={() => setViewMode('3d_broadcast')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === '3d_broadcast'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Visuale Stadio 3D Broadcast (Grafica EA FC come in foto)"
+                >
+                  <Sparkles size={13} className={viewMode === '3d_broadcast' ? 'text-slate-950' : 'text-amber-400'} />
+                  <span>Stadio 3D Broadcast</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('2d_tactical')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === '2d_tactical'
+                      ? 'bg-blue-600 text-white font-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Visuale Lavagna Tattica 2D con Giocatori 3D HD"
+                >
+                  <Layers size={13} className={viewMode === '2d_tactical' ? 'text-white' : 'text-blue-400'} />
+                  <span>Lavagna 2D</span>
+                </button>
+              </div>
+
+              <span className="text-slate-600 hidden md:inline">•</span>
+              <span className="hidden md:inline text-emerald-400 font-bold">// WORKSTATION ACTIVE</span>
             </div>
+
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span>GIOCATORI: {players.length}</span>
               <span className="text-slate-600">•</span>
@@ -976,48 +1017,82 @@ export default function App() {
           </div>
 
           <div className="flex-1 relative flex items-center justify-center overflow-x-auto overflow-y-hidden w-full h-full min-w-0 overscroll-contain">
-            <div className="w-full h-full min-w-[480px] sm:min-w-[620px] md:min-w-0 flex items-center justify-center relative touch-none select-none">
-              <TacticalPitch
-                pitchRef={pitchSvgRef}
-                players={players}
-                equipment={equipment}
-                drawings={drawings}
-                selectedTool={selectedTool}
-                selectedColor={selectedColor}
-                strokeWidth={strokeWidth}
-                pitchSection={pitchSection}
-                pitchTheme={pitchTheme}
-                showHalfSpaces={showHalfSpaces}
-                showDepartmentLines={showDepartmentLines}
-                showPhotos={showPhotos}
-                showNames={showNames}
-                showNumbers={showNumbers}
-                showRoles={showRoles}
-                showOrientation={showOrientation}
-                jerseyStyle={jerseyStyle}
-                onUpdatePlayers={(updated) => {
-                  recordHistory();
-                  updatePlayersWithStep(updated);
-                }}
-                onUpdateEquipment={(updated) => {
-                  recordHistory();
-                  updateEquipmentWithStep(updated);
-                }}
-                onUpdateDrawings={(updated) => {
-                  recordHistory();
-                  updateDrawingsWithStep(updated);
-                }}
-                onSelectPlayer={(p) => setSelectedPlayer(p)}
-                onSelectEquipment={(eq) => setSelectedEquipment(eq)}
-                onSelectDrawing={(d) => setSelectedDrawing(d)}
-                onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
-              />
+            <div className="w-full h-full min-w-[480px] sm:min-w-[620px] md:min-w-0 flex items-center justify-center relative touch-none select-none p-2 sm:p-4">
+              {viewMode === '3d_broadcast' ? (
+                <Broadcast3DPitch
+                  players={players}
+                  selectedPlayer={selectedPlayer}
+                  onSelectPlayer={(p) => setSelectedPlayer(p)}
+                  onUpdatePlayer={(updated) => {
+                    recordHistory();
+                    updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                    setSelectedPlayer(updated);
+                  }}
+                  onUpdatePlayers={(updated) => {
+                    recordHistory();
+                    updatePlayersWithStep(updated);
+                  }}
+                  onOpen3DStudio={(p) => setEditingPlayer3D(p)}
+                />
+              ) : (
+                <TacticalPitch
+                  pitchRef={pitchSvgRef}
+                  players={players}
+                  equipment={equipment}
+                  drawings={drawings}
+                  selectedTool={selectedTool}
+                  selectedColor={selectedColor}
+                  strokeWidth={strokeWidth}
+                  pitchSection={pitchSection}
+                  pitchTheme={pitchTheme}
+                  showHalfSpaces={showHalfSpaces}
+                  showDepartmentLines={showDepartmentLines}
+                  showPhotos={showPhotos}
+                  showNames={showNames}
+                  showNumbers={showNumbers}
+                  showRoles={showRoles}
+                  showOrientation={showOrientation}
+                  jerseyStyle={jerseyStyle}
+                  onUpdatePlayers={(updated) => {
+                    recordHistory();
+                    updatePlayersWithStep(updated);
+                  }}
+                  onUpdateEquipment={(updated) => {
+                    recordHistory();
+                    updateEquipmentWithStep(updated);
+                  }}
+                  onUpdateDrawings={(updated) => {
+                    recordHistory();
+                    updateDrawingsWithStep(updated);
+                  }}
+                  onSelectPlayer={(p) => setSelectedPlayer(p)}
+                  onSelectEquipment={(eq) => setSelectedEquipment(eq)}
+                  onSelectDrawing={(d) => setSelectedDrawing(d)}
+                  onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
+                  onOpen3DStudio={(p) => setEditingPlayer3D(p)}
+                  onRotatePlayerQuick={(id, delta) => {
+                    recordHistory();
+                    updatePlayersWithStep((prev) =>
+                      prev.map((p) => {
+                        if (p.id !== id) return p;
+                        const newRot = (((p.rotation || 0) + delta) % 360 + 360) % 360;
+                        return { ...p, rotation: Math.round(newRot) };
+                      })
+                    );
+                    if (selectedPlayer && selectedPlayer.id === id) {
+                      const newRot = (((selectedPlayer.rotation || 0) + delta) % 360 + 360) % 360;
+                      setSelectedPlayer({ ...selectedPlayer, rotation: Math.round(newRot) });
+                    }
+                  }}
+                />
+              )}
 
               {/* Quick Player Edit Popover on selection */}
               {selectedPlayer && (
                 <PlayerEditPopover
                   player={selectedPlayer}
                   onClose={() => setSelectedPlayer(null)}
+                  onOpen3DStudio={(p) => setEditingPlayer3D(p)}
                   onUpdatePlayer={(updated) => {
                     recordHistory();
                     updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -1027,6 +1102,24 @@ export default function App() {
                     recordHistory();
                     updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
                     setSelectedPlayer(null);
+                  }}
+                  onApplyJerseyToTeam={(team, jerseyUrl) => {
+                    recordHistory();
+                    updatePlayersWithStep((prev) =>
+                      prev.map((p) => (p.team === team ? { ...p, jerseyImageUrl: jerseyUrl } : p))
+                    );
+                    if (selectedPlayer && selectedPlayer.team === team) {
+                      setSelectedPlayer({ ...selectedPlayer, jerseyImageUrl: jerseyUrl });
+                    }
+                  }}
+                  onApplyColorToTeam={(team, color) => {
+                    recordHistory();
+                    updatePlayersWithStep((prev) =>
+                      prev.map((p) => (p.team === team ? { ...p, customColor: color } : p))
+                    );
+                    if (selectedPlayer && selectedPlayer.team === team) {
+                      setSelectedPlayer({ ...selectedPlayer, customColor: color });
+                    }
                   }}
                 />
               )}
@@ -1175,6 +1268,34 @@ export default function App() {
         pitchSvgRef={pitchSvgRef}
         onImportData={handleImportData}
       />
+
+      {/* 3D HD Player Studio Modal (Alta Definizione 3D con Orientamento 360° Sinistra/Destra) */}
+      {editingPlayer3D && (
+        <Player3DStudioModal
+          player={editingPlayer3D}
+          onClose={() => setEditingPlayer3D(null)}
+          onApplyOrientation={(deg) => {
+            recordHistory();
+            updatePlayersWithStep((prev) =>
+              prev.map((p) => (p.id === editingPlayer3D.id ? { ...p, rotation: deg } : p))
+            );
+            if (selectedPlayer && selectedPlayer.id === editingPlayer3D.id) {
+              setSelectedPlayer({ ...selectedPlayer, rotation: deg });
+            }
+            setEditingPlayer3D((prev) => (prev ? { ...prev, rotation: deg } : null));
+          }}
+          onApplyPhotoAvatar={(avatarDataUrl) => {
+            recordHistory();
+            updatePlayersWithStep((prev) =>
+              prev.map((p) => (p.id === editingPlayer3D.id ? { ...p, photoUrl: avatarDataUrl } : p))
+            );
+            if (selectedPlayer && selectedPlayer.id === editingPlayer3D.id) {
+              setSelectedPlayer({ ...selectedPlayer, photoUrl: avatarDataUrl });
+            }
+            setEditingPlayer3D((prev) => (prev ? { ...prev, photoUrl: avatarDataUrl } : null));
+          }}
+        />
+      )}
     </div>
   );
 }
