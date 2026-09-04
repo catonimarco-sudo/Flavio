@@ -68,7 +68,7 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
   onCycleJerseyStyle,
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-slate-900 border-b border-slate-800 text-xs text-slate-300">
+    <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 bg-slate-900 text-xs text-slate-300 select-none">
       {/* Pitch Sections */}
       <div className="flex items-center gap-1 flex-wrap">
         <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold pr-0.5 flex items-center gap-1">

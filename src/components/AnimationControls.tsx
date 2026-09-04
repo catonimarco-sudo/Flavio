@@ -28,7 +28,7 @@ export const AnimationControls: React.FC<AnimationControlsProps> = ({
   onSetSpeed,
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-slate-900 border-b border-slate-800 text-xs text-slate-200">
+    <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 bg-slate-900 text-xs text-slate-200 select-none">
       {/* Left: Playback Controls */}
       <div className="flex items-center gap-1 sm:gap-1.5">
         <button

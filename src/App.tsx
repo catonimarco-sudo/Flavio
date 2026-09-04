@@ -775,7 +775,7 @@ export default function App() {
   }, [isPlayingAnimation, animationSteps, animationSpeed]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-200 font-sans">
+    <div className="flex flex-col min-h-screen w-full bg-slate-950 text-slate-200 font-sans overflow-x-hidden overflow-y-auto">
       {/* 1. Header with brand, tactic title & main action buttons */}
       <Header
         tacticTitle={tacticTitle}
@@ -799,89 +799,14 @@ export default function App() {
         isCopiedLink={isCopiedLink}
       />
 
-      {/* 2. Optional Animation Bar */}
-      {showAnimationBar && (
-        <AnimationControls
-          steps={animationSteps}
-          activeStepIndex={activeStepIndex}
-          onSelectStepIndex={handleSelectAnimationStep}
-          onAddStep={handleAddAnimationStep}
-          onDeleteStep={handleDeleteAnimationStep}
-          onUpdateActiveStepSnapshot={handleUpdateActiveStepSnapshot}
-          isPlaying={isPlayingAnimation}
-          onTogglePlay={() => setIsPlayingAnimation(!isPlayingAnimation)}
-          speed={animationSpeed}
-          onSetSpeed={setAnimationSpeed}
-        />
-      )}
-
-      {/* 3. Toolbar Row 1: Tactical Tools, Colors, Half-Spaces, Undo */}
-      <ToolbarTactics
-        selectedTool={selectedTool}
-        onSelectTool={setSelectedTool}
-        selectedColor={selectedColor}
-        onSelectColor={setSelectedColor}
-        strokeWidth={strokeWidth}
-        onSelectStrokeWidth={setStrokeWidth}
-        showHalfSpaces={showHalfSpaces}
-        onToggleHalfSpaces={() => setShowHalfSpaces(!showHalfSpaces)}
-        canUndo={history.length > 0}
-        canRedo={redoStack.length > 0}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onClearAll={handleClearAll}
-      />
-
-      {/* 4. Toolbar Row 2: Equipment & Quick Player Spawning */}
-      <ToolbarEquipment
-        onAddEquipment={handleAddEquipment}
-        onAddPlayer={handleAddPlayer}
-      />
-
-      {/* 5. Toolbar Row 3: Pitch Section, Formations, Player Visual Toggles */}
-      <ToolbarPitchSettings
-        pitchSection={pitchSection}
-        onSelectPitchSection={setPitchSection}
-        pitchTheme={pitchTheme}
-        onSelectPitchTheme={setPitchTheme}
-        onApplyFormation={handleApplyFormation}
-        showDepartmentLines={showDepartmentLines}
-        onToggleDepartmentLines={() => setShowDepartmentLines(!showDepartmentLines)}
-        showPhotos={showPhotos}
-        onTogglePhotos={() => setShowPhotos(!showPhotos)}
-        showNames={showNames}
-        onToggleNames={() => setShowNames(!showNames)}
-        showNumbers={showNumbers}
-        onToggleNumbers={() => setShowNumbers(!showNumbers)}
-        showRoles={showRoles}
-        onToggleRoles={() => setShowRoles(!showRoles)}
-        showOrientation={showOrientation}
-        onToggleOrientation={() => setShowOrientation(!showOrientation)}
-        jerseyStyle={jerseyStyle}
-        onCycleJerseyStyle={() =>
-          setJerseyStyle((prev) => {
-            if (prev === 'fullbody_3d') return 'realistic';
-            if (prev === 'realistic') return 'shirt';
-            if (prev === 'shirt') return 'vest';
-            if (prev === 'vest') return 'circle';
-            return 'fullbody_3d';
-          })
-        }
-      />
-
-      {/* 6. Main Interactive Workspace (Sidebars + Pitch) */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar Backdrop on Mobile */}
-        {showSquadSidebar && (
+      {/* Slide-out Left Sidebar Drawer: Rosa Squadra */}
+      {showSquadSidebar && (
+        <>
           <div
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs"
+            className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs transition-opacity"
             onClick={() => setShowSquadSidebar(false)}
           />
-        )}
-
-        {/* Left Docked Sidebar / Mobile Drawer: Rosa Squadra */}
-        {showSquadSidebar && (
-          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] md:relative md:inset-auto md:w-60 lg:w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-xs select-none shadow-2xl md:shadow-none animate-in slide-in-from-left duration-200">
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-xs select-none shadow-2xl animate-in slide-in-from-left duration-200">
             <div className="p-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
               <div className="flex items-center gap-1.5 font-bold text-slate-200">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
@@ -914,7 +839,6 @@ export default function App() {
                     key={player.id}
                     onClick={() => {
                       handleSpawnPlayerFromSquad(player, 'home');
-                      // On small screens, keep drawer open or let user place multiple
                     }}
                     className={`flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer group ${
                       isPlaced
@@ -924,7 +848,6 @@ export default function App() {
                     title="Clicca per schierare sul campo"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      {/* Mini Avatar / Number */}
                       <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
                         {player.photoUrl ? (
                           <img
@@ -968,176 +891,17 @@ export default function App() {
               <span>{players.filter((p) => p.team === 'away').length} Rossi</span>
             </div>
           </aside>
-        )}
+        </>
+      )}
 
-        {/* Central Tactical Pitch Canvas - Edge-to-Edge Length with Overflow Scrolling */}
-        <main className="flex-1 relative overflow-hidden flex flex-col p-0 bg-slate-950 min-w-0">
-          {/* Top Canvas Technical Badge & View Switcher */}
-          <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1.5 bg-slate-950/90 border-b border-slate-800/80 text-[9px] sm:text-[10px] font-mono text-slate-400 select-none gap-2">
-            <div className="flex items-center gap-2">
-              {/* Primary Visual Mode Switcher: 3D Broadcast (Photo EA FC style) vs 2D Tactical */}
-              <div className="flex items-center bg-slate-900 p-0.5 rounded-xl border border-slate-700/80 shadow-inner">
-                <button
-                  onClick={() => setViewMode('3d_broadcast')}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === '3d_broadcast'
-                      ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Visuale Stadio 3D Broadcast (Grafica EA FC come in foto)"
-                >
-                  <Sparkles size={13} className={viewMode === '3d_broadcast' ? 'text-slate-950' : 'text-amber-400'} />
-                  <span>Stadio 3D Broadcast</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('2d_tactical')}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === '2d_tactical'
-                      ? 'bg-blue-600 text-white font-black shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Visuale Lavagna Tattica 2D con Giocatori 3D HD"
-                >
-                  <Layers size={13} className={viewMode === '2d_tactical' ? 'text-white' : 'text-blue-400'} />
-                  <span>Lavagna 2D</span>
-                </button>
-              </div>
-
-              <span className="text-slate-600 hidden md:inline">•</span>
-              <span className="hidden md:inline text-emerald-400 font-bold">// WORKSTATION ACTIVE</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span>GIOCATORI: {players.length}</span>
-              <span className="text-slate-600">•</span>
-              <span>ATTREZZI: {equipment.length}</span>
-              <span className="text-slate-600 hidden sm:inline">•</span>
-              <span className="hidden sm:inline">TRACCIATI: {drawings.length}</span>
-            </div>
-          </div>
-
-          <div className="flex-1 relative flex items-center justify-center overflow-x-auto overflow-y-hidden w-full h-full min-w-0 overscroll-contain">
-            <div className="w-full h-full min-w-[480px] sm:min-w-[620px] md:min-w-0 flex items-center justify-center relative touch-none select-none p-2 sm:p-4">
-              {viewMode === '3d_broadcast' ? (
-                <Broadcast3DPitch
-                  players={players}
-                  selectedPlayer={selectedPlayer}
-                  onSelectPlayer={(p) => setSelectedPlayer(p)}
-                  onUpdatePlayer={(updated) => {
-                    recordHistory();
-                    updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                    setSelectedPlayer(updated);
-                  }}
-                  onUpdatePlayers={(updated) => {
-                    recordHistory();
-                    updatePlayersWithStep(updated);
-                  }}
-                  onOpen3DStudio={(p) => setEditingPlayer3D(p)}
-                />
-              ) : (
-                <TacticalPitch
-                  pitchRef={pitchSvgRef}
-                  players={players}
-                  equipment={equipment}
-                  drawings={drawings}
-                  selectedTool={selectedTool}
-                  selectedColor={selectedColor}
-                  strokeWidth={strokeWidth}
-                  pitchSection={pitchSection}
-                  pitchTheme={pitchTheme}
-                  showHalfSpaces={showHalfSpaces}
-                  showDepartmentLines={showDepartmentLines}
-                  showPhotos={showPhotos}
-                  showNames={showNames}
-                  showNumbers={showNumbers}
-                  showRoles={showRoles}
-                  showOrientation={showOrientation}
-                  jerseyStyle={jerseyStyle}
-                  onUpdatePlayers={(updated) => {
-                    recordHistory();
-                    updatePlayersWithStep(updated);
-                  }}
-                  onUpdateEquipment={(updated) => {
-                    recordHistory();
-                    updateEquipmentWithStep(updated);
-                  }}
-                  onUpdateDrawings={(updated) => {
-                    recordHistory();
-                    updateDrawingsWithStep(updated);
-                  }}
-                  onSelectPlayer={(p) => setSelectedPlayer(p)}
-                  onSelectEquipment={(eq) => setSelectedEquipment(eq)}
-                  onSelectDrawing={(d) => setSelectedDrawing(d)}
-                  onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
-                  onOpen3DStudio={(p) => setEditingPlayer3D(p)}
-                  onRotatePlayerQuick={(id, delta) => {
-                    recordHistory();
-                    updatePlayersWithStep((prev) =>
-                      prev.map((p) => {
-                        if (p.id !== id) return p;
-                        const newRot = (((p.rotation || 0) + delta) % 360 + 360) % 360;
-                        return { ...p, rotation: Math.round(newRot) };
-                      })
-                    );
-                    if (selectedPlayer && selectedPlayer.id === id) {
-                      const newRot = (((selectedPlayer.rotation || 0) + delta) % 360 + 360) % 360;
-                      setSelectedPlayer({ ...selectedPlayer, rotation: Math.round(newRot) });
-                    }
-                  }}
-                />
-              )}
-
-              {/* Quick Player Edit Popover on selection */}
-              {selectedPlayer && (
-                <PlayerEditPopover
-                  player={selectedPlayer}
-                  onClose={() => setSelectedPlayer(null)}
-                  onOpen3DStudio={(p) => setEditingPlayer3D(p)}
-                  onUpdatePlayer={(updated) => {
-                    recordHistory();
-                    updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                    setSelectedPlayer(updated);
-                  }}
-                  onRemovePlayer={(id) => {
-                    recordHistory();
-                    updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
-                    setSelectedPlayer(null);
-                  }}
-                  onApplyJerseyToTeam={(team, jerseyUrl) => {
-                    recordHistory();
-                    updatePlayersWithStep((prev) =>
-                      prev.map((p) => (p.team === team ? { ...p, jerseyImageUrl: jerseyUrl } : p))
-                    );
-                    if (selectedPlayer && selectedPlayer.team === team) {
-                      setSelectedPlayer({ ...selectedPlayer, jerseyImageUrl: jerseyUrl });
-                    }
-                  }}
-                  onApplyColorToTeam={(team, color) => {
-                    recordHistory();
-                    updatePlayersWithStep((prev) =>
-                      prev.map((p) => (p.team === team ? { ...p, customColor: color } : p))
-                    );
-                    if (selectedPlayer && selectedPlayer.team === team) {
-                      setSelectedPlayer({ ...selectedPlayer, customColor: color });
-                    }
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </main>
-
-        {/* Right Sidebar Backdrop on Mobile */}
-        {showSessionSidebar && (
+      {/* Slide-out Right Sidebar Drawer: Seduta Allenamento */}
+      {showSessionSidebar && (
+        <>
           <div
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs"
+            className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs transition-opacity"
             onClick={() => setShowSessionSidebar(false)}
           />
-        )}
-
-        {/* Right Docked Sidebar / Mobile Drawer: Sessione Allenamento & Obiettivi */}
-        {showSessionSidebar && (
-          <aside className="fixed inset-y-0 right-0 z-50 w-72 max-w-[85vw] md:relative md:inset-auto md:w-64 lg:w-72 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 text-xs select-none shadow-2xl md:shadow-none animate-in slide-in-from-right duration-200">
+          <aside className="fixed inset-y-0 right-0 z-50 w-80 max-w-[88vw] bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 text-xs select-none shadow-2xl animate-in slide-in-from-right duration-200">
             <div className="p-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
               <div className="flex items-center gap-1.5 font-bold text-slate-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -1161,7 +925,6 @@ export default function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              {/* Drill Meta Header */}
               <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                 <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 font-bold">
                   {drillSheet.category}
@@ -1175,7 +938,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Primary Objective */}
               <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800/70">
                 <div className="text-[10px] font-bold text-emerald-400 uppercase font-mono mb-0.5">
                   Obiettivo Primario
@@ -1185,7 +947,6 @@ export default function App() {
                 </p>
               </div>
 
-              {/* Coaching Points */}
               <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800/70">
                 <div className="text-[10px] font-bold text-amber-400 uppercase font-mono mb-0.5">
                   Punti Chiave per il Mister
@@ -1195,7 +956,6 @@ export default function App() {
                 </p>
               </div>
 
-              {/* Rules & Variations */}
               <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800/70">
                 <div className="text-[10px] font-bold text-blue-400 uppercase font-mono mb-0.5">
                   Regole & Vincoli
@@ -1206,7 +966,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Quick Action Button */}
             <div className="p-2 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
               <button
                 onClick={() => window.print()}
@@ -1216,8 +975,250 @@ export default function App() {
               </button>
             </div>
           </aside>
+        </>
+      )}
+
+      {/* 2. IL CAMPO DA GIOCO (PITCH WORKSPACE) - POSIZIONATO IN ALTO / SOPRA A TUTTO */}
+      <section className="w-full max-w-6xl mx-auto px-2 sm:px-4 pt-2 sm:pt-3 pb-1 shrink-0 flex flex-col">
+        {/* Pitch Bar with View Switcher (3D Broadcast vs 2D Tactical) & Technical Counters */}
+        <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1.5 bg-slate-900/90 rounded-t-xl border border-slate-800 text-[10px] sm:text-xs font-mono text-slate-400 select-none gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+              <button
+                onClick={() => setViewMode('3d_broadcast')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                  viewMode === '3d_broadcast'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Visuale Stadio 3D Broadcast (Grafica EA FC come in foto)"
+              >
+                <Sparkles size={13} className={viewMode === '3d_broadcast' ? 'text-slate-950' : 'text-amber-400'} />
+                <span>Stadio 3D Broadcast</span>
+              </button>
+              <button
+                onClick={() => setViewMode('2d_tactical')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+                  viewMode === '2d_tactical'
+                    ? 'bg-blue-600 text-white font-black shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Visuale Lavagna Tattica 2D con Giocatori 3D HD"
+              >
+                <Layers size={13} className={viewMode === '2d_tactical' ? 'text-white' : 'text-blue-400'} />
+                <span>Lavagna 2D</span>
+              </button>
+            </div>
+
+            <span className="text-slate-700 hidden sm:inline">•</span>
+            <span className="hidden sm:inline text-emerald-400 font-bold text-[10px]">// CAMPO TATTICO</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-[10px]">
+            <span className="bg-slate-950 px-2 py-0.5 rounded border border-slate-800/80">
+              GIOCATORI: <b className="text-white">{players.length}</b>
+            </span>
+            <span className="bg-slate-950 px-2 py-0.5 rounded border border-slate-800/80">
+              ATTREZZI: <b className="text-white">{equipment.length}</b>
+            </span>
+            <span className="bg-slate-950 px-2 py-0.5 rounded border border-slate-800/80 hidden xs:inline">
+              TRACCIATI: <b className="text-white">{drawings.length}</b>
+            </span>
+          </div>
+        </div>
+
+        {/* Pitch Area Container - Edge-to-edge responsiveness on mobile/iPad/PC */}
+        <div className="relative w-full rounded-b-xl border-x border-b border-slate-800 overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center">
+          {viewMode === '3d_broadcast' ? (
+            <Broadcast3DPitch
+              players={players}
+              selectedPlayer={selectedPlayer}
+              onSelectPlayer={(p) => setSelectedPlayer(p)}
+              onUpdatePlayer={(updated) => {
+                recordHistory();
+                updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                setSelectedPlayer(updated);
+              }}
+              onUpdatePlayers={(updated) => {
+                recordHistory();
+                updatePlayersWithStep(updated);
+              }}
+              onOpen3DStudio={(p) => setEditingPlayer3D(p)}
+            />
+          ) : (
+            <div className="w-full aspect-[1050/680] max-h-[75vh] flex items-center justify-center">
+              <TacticalPitch
+                pitchRef={pitchSvgRef}
+                players={players}
+                equipment={equipment}
+                drawings={drawings}
+                selectedTool={selectedTool}
+                selectedColor={selectedColor}
+                strokeWidth={strokeWidth}
+                pitchSection={pitchSection}
+                pitchTheme={pitchTheme}
+                showHalfSpaces={showHalfSpaces}
+                showDepartmentLines={showDepartmentLines}
+                showPhotos={showPhotos}
+                showNames={showNames}
+                showNumbers={showNumbers}
+                showRoles={showRoles}
+                showOrientation={showOrientation}
+                jerseyStyle={jerseyStyle}
+                onUpdatePlayers={(updated) => {
+                  recordHistory();
+                  updatePlayersWithStep(updated);
+                }}
+                onUpdateEquipment={(updated) => {
+                  recordHistory();
+                  updateEquipmentWithStep(updated);
+                }}
+                onUpdateDrawings={(updated) => {
+                  recordHistory();
+                  updateDrawingsWithStep(updated);
+                }}
+                onSelectPlayer={(p) => setSelectedPlayer(p)}
+                onSelectEquipment={(eq) => setSelectedEquipment(eq)}
+                onSelectDrawing={(d) => setSelectedDrawing(d)}
+                onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
+                onOpen3DStudio={(p) => setEditingPlayer3D(p)}
+                onRotatePlayerQuick={(id, delta) => {
+                  recordHistory();
+                  updatePlayersWithStep((prev) =>
+                    prev.map((p) => {
+                      if (p.id !== id) return p;
+                      const newRot = (((p.rotation || 0) + delta) % 360 + 360) % 360;
+                      return { ...p, rotation: Math.round(newRot) };
+                    })
+                  );
+                  if (selectedPlayer && selectedPlayer.id === id) {
+                    const newRot = (((selectedPlayer.rotation || 0) + delta) % 360 + 360) % 360;
+                    setSelectedPlayer({ ...selectedPlayer, rotation: Math.round(newRot) });
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Quick Player Edit Popover on selection */}
+          {selectedPlayer && (
+            <PlayerEditPopover
+              player={selectedPlayer}
+              onClose={() => setSelectedPlayer(null)}
+              onOpen3DStudio={(p) => setEditingPlayer3D(p)}
+              onUpdatePlayer={(updated) => {
+                recordHistory();
+                updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                setSelectedPlayer(updated);
+              }}
+              onRemovePlayer={(id) => {
+                recordHistory();
+                updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
+                setSelectedPlayer(null);
+              }}
+              onApplyJerseyToTeam={(team, jerseyUrl) => {
+                recordHistory();
+                updatePlayersWithStep((prev) =>
+                  prev.map((p) => (p.team === team ? { ...p, jerseyImageUrl: jerseyUrl } : p))
+                );
+                if (selectedPlayer && selectedPlayer.team === team) {
+                  setSelectedPlayer({ ...selectedPlayer, jerseyImageUrl: jerseyUrl });
+                }
+              }}
+              onApplyColorToTeam={(team, color) => {
+                recordHistory();
+                updatePlayersWithStep((prev) =>
+                  prev.map((p) => (p.team === team ? { ...p, customColor: color } : p))
+                );
+                if (selectedPlayer && selectedPlayer.team === team) {
+                  setSelectedPlayer({ ...selectedPlayer, customColor: color });
+                }
+              }}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* 3. TUTTO IL RESTO SOTTO (All Controls, Toolbars, Equipment, Formations & Settings Below the Pitch) */}
+      <section className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-3 space-y-2.5 flex-1 shrink-0">
+        {/* Optional Animation Bar */}
+        {showAnimationBar && (
+          <div className="rounded-xl overflow-hidden shadow-lg border border-slate-800">
+            <AnimationControls
+              steps={animationSteps}
+              activeStepIndex={activeStepIndex}
+              onSelectStepIndex={handleSelectAnimationStep}
+              onAddStep={handleAddAnimationStep}
+              onDeleteStep={handleDeleteAnimationStep}
+              onUpdateActiveStepSnapshot={handleUpdateActiveStepSnapshot}
+              isPlaying={isPlayingAnimation}
+              onTogglePlay={() => setIsPlayingAnimation(!isPlayingAnimation)}
+              speed={animationSpeed}
+              onSetSpeed={setAnimationSpeed}
+            />
+          </div>
         )}
-      </div>
+
+        {/* Toolbar Row 1: Tactical Drawing Tools, Colors, Half-Spaces, Undo */}
+        <div className="rounded-xl overflow-hidden shadow-lg border border-slate-800 bg-slate-900">
+          <ToolbarTactics
+            selectedTool={selectedTool}
+            onSelectTool={setSelectedTool}
+            selectedColor={selectedColor}
+            onSelectColor={setSelectedColor}
+            strokeWidth={strokeWidth}
+            onSelectStrokeWidth={setStrokeWidth}
+            showHalfSpaces={showHalfSpaces}
+            onToggleHalfSpaces={() => setShowHalfSpaces(!showHalfSpaces)}
+            canUndo={history.length > 0}
+            canRedo={redoStack.length > 0}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onClearAll={handleClearAll}
+          />
+        </div>
+
+        {/* Toolbar Row 2: Equipment & Quick Player Spawning */}
+        <div className="rounded-xl overflow-hidden shadow-lg border border-slate-800 bg-slate-900">
+          <ToolbarEquipment
+            onAddEquipment={handleAddEquipment}
+            onAddPlayer={handleAddPlayer}
+          />
+        </div>
+
+        {/* Toolbar Row 3: Pitch Section, Formations, Visual Toggles */}
+        <div className="rounded-xl overflow-hidden shadow-lg border border-slate-800 bg-slate-900">
+          <ToolbarPitchSettings
+            pitchSection={pitchSection}
+            onSelectPitchSection={setPitchSection}
+            pitchTheme={pitchTheme}
+            onSelectPitchTheme={setPitchTheme}
+            onApplyFormation={handleApplyFormation}
+            showDepartmentLines={showDepartmentLines}
+            onToggleDepartmentLines={() => setShowDepartmentLines(!showDepartmentLines)}
+            showPhotos={showPhotos}
+            onTogglePhotos={() => setShowPhotos(!showPhotos)}
+            showNames={showNames}
+            onToggleNames={() => setShowNames(!showNames)}
+            showNumbers={showNumbers}
+            onToggleNumbers={() => setShowNumbers(!showNumbers)}
+            showRoles={showRoles}
+            onToggleRoles={() => setShowRoles(!showRoles)}
+            showOrientation={showOrientation}
+            onToggleOrientation={() => setShowOrientation(!showOrientation)}
+            jerseyStyle={jerseyStyle}
+            onCycleJerseyStyle={() =>
+              setJerseyStyle((prev) => {
+                if (prev === 'fullbody_3d') return 'realistic';
+                if (prev === 'realistic') return 'shirt';
+                if (prev === 'shirt') return 'vest';
+                if (prev === 'vest') return 'circle';
+                return 'fullbody_3d';
+              })
+            }
+          />
+        </div>
+      </section>
 
       {/* 7. Modals */}
       {/* Squad Management Modal (Add, Edit, Delete, Photos, Custom Avatars) */}

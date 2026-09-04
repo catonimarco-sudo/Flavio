@@ -19,18 +19,27 @@
   background: #475569;
 }
 
-/* Touch & Gesture Prevention for iPad/iPhone */
-html, body, #root {
-  overscroll-behavior: contain;
-  overscroll-behavior-y: contain;
+/* Touch & Smooth Scroll Handling for iPad/iPhone & Desktop */
+html, body {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Touch-action and no-callout for tactical elements */
+/* Touch-action and no-callout ONLY for tactical draggable nodes */
 .tactical-draggable {
   touch-action: none !important;
   -webkit-touch-callout: none !important;
