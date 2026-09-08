@@ -28,8 +28,6 @@ import { DrillSheetModal } from './components/DrillSheetModal';
 import { PresetsModal } from './components/PresetsModal';
 import { ExportModal } from './components/ExportModal';
 import { PlayerEditPopover } from './components/PlayerEditPopover';
-import { Player3DStudioModal } from './components/Player3DStudioModal';
-import { Broadcast3DPitch } from './components/Broadcast3DPitch';
 import { AnimationControls } from './components/AnimationControls';
 import { X, Sparkles, Layers, Eye } from 'lucide-react';
 import { CloudSyncStatus } from './components/Header';
@@ -53,6 +51,31 @@ function sanitizeCoords<T extends { x: number; y: number }>(item: T): T {
   return { ...item, x, y };
 }
 
+export function deduplicateById<T extends { id: string }>(items: T[]): T[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (!item) continue;
+    if (!item.id) {
+      const generatedId = `gen-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      result.push({ ...item, id: generatedId });
+      seen.add(generatedId);
+      continue;
+    }
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      result.push(item);
+    } else {
+      // Duplicate ID detected - reassign unique ID to preserve item and prevent React key collision
+      const uniqueId = `${item.id}-${Math.random().toString(36).substring(2, 6)}`;
+      seen.add(uniqueId);
+      result.push({ ...item, id: uniqueId });
+    }
+  }
+  return result;
+}
+
 function sanitizeDrawing(dr: TacticalDrawing): TacticalDrawing {
   const points = (dr.points || []).map((pt) => {
     if (pt.x <= 100 && pt.y <= 100) {
@@ -71,6 +94,21 @@ function sanitizeDrawing(dr: TacticalDrawing): TacticalDrawing {
     };
   }
   return { ...dr, points, controlPoint };
+}
+
+function sanitizeDrawingsList(drawings: TacticalDrawing[]): TacticalDrawing[] {
+  if (!Array.isArray(drawings)) return [];
+  return deduplicateById(drawings.map(sanitizeDrawing));
+}
+
+function sanitizePlayersList(players: PlacedPlayer[]): PlacedPlayer[] {
+  if (!Array.isArray(players)) return [];
+  return deduplicateById(players.map(sanitizeCoords));
+}
+
+function sanitizeEquipmentList(eq: PlacedEquipment[]): PlacedEquipment[] {
+  if (!Array.isArray(eq)) return [];
+  return deduplicateById(eq.map(sanitizeCoords));
 }
 
 export default function App() {
@@ -125,10 +163,10 @@ export default function App() {
       const saved = localStorage.getItem(`${STORAGE_KEY}_players`);
       if (saved !== null) {
         const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed.map(sanitizeCoords) : [];
+        return Array.isArray(parsed) ? sanitizePlayersList(parsed) : [];
       }
     } catch {}
-    return (PRESET_TACTICS[0].players || []).map(sanitizeCoords);
+    return sanitizePlayersList(PRESET_TACTICS[0].players || []);
   });
 
   const [equipment, setEquipment] = useState<PlacedEquipment[]>(() => {
@@ -136,10 +174,10 @@ export default function App() {
       const saved = localStorage.getItem(`${STORAGE_KEY}_equipment`);
       if (saved !== null) {
         const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed.map(sanitizeCoords) : [];
+        return Array.isArray(parsed) ? sanitizeEquipmentList(parsed) : [];
       }
     } catch {}
-    return (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords);
+    return sanitizeEquipmentList(PRESET_TACTICS[0].equipment || []);
   });
 
   const [drawings, setDrawings] = useState<TacticalDrawing[]>(() => {
@@ -147,10 +185,10 @@ export default function App() {
       const saved = localStorage.getItem(`${STORAGE_KEY}_drawings`);
       if (saved !== null) {
         const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed.map(sanitizeDrawing) : [];
+        return Array.isArray(parsed) ? sanitizeDrawingsList(parsed) : [];
       }
     } catch {}
-    return (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing);
+    return sanitizeDrawingsList(PRESET_TACTICS[0].drawings || []);
   });
 
   // Active Tool & Settings
@@ -169,8 +207,7 @@ export default function App() {
   const [showNumbers, setShowNumbers] = useState<boolean>(true);
   const [showRoles, setShowRoles] = useState<boolean>(true);
   const [showOrientation, setShowOrientation] = useState<boolean>(true);
-  const [jerseyStyle, setJerseyStyle] = useState<JerseyStyle>('fullbody_3d');
-  const [viewMode, setViewMode] = useState<'3d_broadcast' | '2d_tactical'>('3d_broadcast');
+  const [jerseyStyle, setJerseyStyle] = useState<JerseyStyle>('broadcast');
 
   // Layout toggles (Default closed for maximized pitch view)
   const [showSquadSidebar, setShowSquadSidebar] = useState<boolean>(false);
@@ -180,9 +217,6 @@ export default function App() {
   const [selectedPlayer, setSelectedPlayer] = useState<PlacedPlayer | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<PlacedEquipment | null>(null);
   const [selectedDrawing, setSelectedDrawing] = useState<TacticalDrawing | null>(null);
-
-  // 3D Player Studio State
-  const [editingPlayer3D, setEditingPlayer3D] = useState<PlacedPlayer | null>(null);
 
   // Modals
   const [isSquadModalOpen, setIsSquadModalOpen] = useState(false);
@@ -213,9 +247,9 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((step) => ({
             ...step,
-            players: (step.players || []).map(sanitizeCoords),
-            equipment: (step.equipment || []).map(sanitizeCoords),
-            drawings: (step.drawings || []).map(sanitizeDrawing),
+            players: sanitizePlayersList(step.players || []),
+            equipment: sanitizeEquipmentList(step.equipment || []),
+            drawings: sanitizeDrawingsList(step.drawings || []),
           }));
         }
       }
@@ -225,23 +259,23 @@ export default function App() {
       {
         id: 'step-1',
         name: 'Fase 1 (Inizio)',
-        players: (PRESET_TACTICS[0].players || []).map(sanitizeCoords),
-        equipment: (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords),
-        drawings: (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing),
+        players: sanitizePlayersList(PRESET_TACTICS[0].players || []),
+        equipment: sanitizeEquipmentList(PRESET_TACTICS[0].equipment || []),
+        drawings: sanitizeDrawingsList(PRESET_TACTICS[0].drawings || []),
         durationMs: 1500,
       },
       {
         id: 'step-2',
         name: 'Fase 2 (Sviluppo)',
-        players: (PRESET_TACTICS[0].players || []).map((p) => {
+        players: sanitizePlayersList((PRESET_TACTICS[0].players || []).map((p) => {
           const clean = sanitizeCoords(p);
           return {
             ...clean,
             x: Math.min(1000, clean.x + (clean.team === 'home' ? 80 : -40)),
           };
-        }),
-        equipment: (PRESET_TACTICS[0].equipment || []).map(sanitizeCoords),
-        drawings: (PRESET_TACTICS[0].drawings || []).map(sanitizeDrawing),
+        })),
+        equipment: sanitizeEquipmentList(PRESET_TACTICS[0].equipment || []),
+        drawings: sanitizeDrawingsList(PRESET_TACTICS[0].drawings || []),
         durationMs: 1500,
       },
     ];
@@ -283,12 +317,13 @@ export default function App() {
   ) => {
     setPlayers((prev) => {
       const resolved = typeof newPlayers === 'function' ? newPlayers(prev) : newPlayers;
+      const cleanPlayers = sanitizePlayersList(resolved);
       setAnimationSteps((steps) =>
         steps.map((step, idx) =>
-          idx === activeStepIndex ? { ...step, players: resolved } : step
+          idx === activeStepIndex ? { ...step, players: cleanPlayers } : step
         )
       );
-      return resolved;
+      return cleanPlayers;
     });
   }, [activeStepIndex]);
 
@@ -296,12 +331,13 @@ export default function App() {
     newEq: PlacedEquipment[] | ((prev: PlacedEquipment[]) => PlacedEquipment[])) => {
     setEquipment((prev) => {
       const resolved = typeof newEq === 'function' ? newEq(prev) : newEq;
+      const cleanEquipment = sanitizeEquipmentList(resolved);
       setAnimationSteps((steps) =>
         steps.map((step, idx) =>
-          idx === activeStepIndex ? { ...step, equipment: resolved } : step
+          idx === activeStepIndex ? { ...step, equipment: cleanEquipment } : step
         )
       );
-      return resolved;
+      return cleanEquipment;
     });
   }, [activeStepIndex]);
 
@@ -309,12 +345,13 @@ export default function App() {
     newDr: TacticalDrawing[] | ((prev: TacticalDrawing[]) => TacticalDrawing[])) => {
     setDrawings((prev) => {
       const resolved = typeof newDr === 'function' ? newDr(prev) : newDr;
+      const cleanDrawings = sanitizeDrawingsList(resolved);
       setAnimationSteps((steps) =>
         steps.map((step, idx) =>
-          idx === activeStepIndex ? { ...step, drawings: resolved } : step
+          idx === activeStepIndex ? { ...step, drawings: cleanDrawings } : step
         )
       );
-      return resolved;
+      return cleanDrawings;
     });
   }, [activeStepIndex]);
 
@@ -371,19 +408,23 @@ export default function App() {
     } catch (e) {}
   }, [drillSheet]);
 
-  // Persist current cloud tactic ID to localStorage and URL
+  // Persist current cloud tactic ID to localStorage and URL safely
   useEffect(() => {
     if (currentTacticId) {
       try {
         localStorage.setItem(`${STORAGE_KEY}_current_cloud_id`, currentTacticId);
       } catch {}
-      // Update URL without full page reload
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get('id') !== currentTacticId) {
-          url.searchParams.set('id', currentTacticId);
-          window.history.replaceState({}, '', url.toString());
+      // Update URL without full page reload, guarded for sandboxed iframes
+      try {
+        if (typeof window !== 'undefined' && window.location && window.history) {
+          const url = new URL(window.location.href);
+          if (url.searchParams.get('id') !== currentTacticId) {
+            url.searchParams.set('id', currentTacticId);
+            window.history.replaceState({}, '', url.toString());
+          }
         }
+      } catch {
+        // Sandboxed iframes may block history.replaceState
       }
     }
   }, [currentTacticId]);
@@ -408,21 +449,21 @@ export default function App() {
         if (cloudData.jerseyStyle) setJerseyStyle(cloudData.jerseyStyle);
 
         if (cloudData.players && Array.isArray(cloudData.players)) {
-          setPlayers(cloudData.players.map(sanitizeCoords));
+          setPlayers(sanitizePlayersList(cloudData.players));
         }
         if (cloudData.equipment && Array.isArray(cloudData.equipment)) {
-          setEquipment(cloudData.equipment.map(sanitizeCoords));
+          setEquipment(sanitizeEquipmentList(cloudData.equipment));
         }
         if (cloudData.drawings && Array.isArray(cloudData.drawings)) {
-          setDrawings(cloudData.drawings.map(sanitizeDrawing));
+          setDrawings(sanitizeDrawingsList(cloudData.drawings));
         }
         if (cloudData.animationSteps && Array.isArray(cloudData.animationSteps)) {
           setAnimationSteps(
             cloudData.animationSteps.map((step) => ({
               ...step,
-              players: (step.players || []).map(sanitizeCoords),
-              equipment: (step.equipment || []).map(sanitizeCoords),
-              drawings: (step.drawings || []).map(sanitizeDrawing),
+              players: sanitizePlayersList(step.players || []),
+              equipment: sanitizeEquipmentList(step.equipment || []),
+              drawings: sanitizeDrawingsList(step.drawings || []),
             }))
           );
         }
@@ -446,11 +487,16 @@ export default function App() {
 
   // Initial Load by URL query param ?id=
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const urlId = params.get('id');
-    if (urlId && urlId !== currentTacticId) {
-      setCurrentTacticId(urlId);
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        const params = new URLSearchParams(window.location.search);
+        const urlId = params.get('id');
+        if (urlId && urlId !== currentTacticId) {
+          setCurrentTacticId(urlId);
+        }
+      }
+    } catch {
+      // Ignore URL access restrictions
     }
   }, []);
 
@@ -980,38 +1026,16 @@ export default function App() {
 
       {/* 2. IL CAMPO DA GIOCO (PITCH WORKSPACE) - POSIZIONATO IN ALTO / SOPRA A TUTTO */}
       <section className="w-full max-w-6xl mx-auto px-2 sm:px-4 pt-2 sm:pt-3 pb-1 shrink-0 flex flex-col">
-        {/* Pitch Bar with View Switcher (3D Broadcast vs 2D Tactical) & Technical Counters */}
+        {/* Pitch Bar with Technical Counters */}
         <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1.5 bg-slate-900/90 rounded-t-xl border border-slate-800 text-[10px] sm:text-xs font-mono text-slate-400 select-none gap-2">
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-              <button
-                onClick={() => setViewMode('3d_broadcast')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
-                  viewMode === '3d_broadcast'
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Visuale Stadio 3D Broadcast (Grafica EA FC come in foto)"
-              >
-                <Sparkles size={13} className={viewMode === '3d_broadcast' ? 'text-slate-950' : 'text-amber-400'} />
-                <span>Stadio 3D Broadcast</span>
-              </button>
-              <button
-                onClick={() => setViewMode('2d_tactical')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
-                  viewMode === '2d_tactical'
-                    ? 'bg-blue-600 text-white font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Visuale Lavagna Tattica 2D con Giocatori 3D HD"
-              >
-                <Layers size={13} className={viewMode === '2d_tactical' ? 'text-white' : 'text-blue-400'} />
-                <span>Lavagna 2D</span>
-              </button>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950 border border-slate-800 text-xs font-bold text-white">
+              <Layers size={13} className="text-emerald-400" />
+              <span>Lavagna Tattica 2D</span>
             </div>
 
             <span className="text-slate-700 hidden sm:inline">•</span>
-            <span className="hidden sm:inline text-emerald-400 font-bold text-[10px]">// CAMPO TATTICO</span>
+            <span className="hidden sm:inline text-emerald-400 font-bold text-[10px]">// CAMPO TATTICO DIGITALE</span>
           </div>
 
           <div className="flex items-center gap-2 text-[10px]">
@@ -1029,113 +1053,57 @@ export default function App() {
 
         {/* Pitch Area Container - Edge-to-edge responsiveness on mobile/iPad/PC */}
         <div className="relative w-full rounded-b-xl border-x border-b border-slate-800 overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center">
-          {viewMode === '3d_broadcast' ? (
-            <Broadcast3DPitch
+          <div className="w-full aspect-[1050/680] max-h-[75vh] flex items-center justify-center">
+            <TacticalPitch
+              pitchRef={pitchSvgRef}
               players={players}
-              selectedPlayer={selectedPlayer}
-              onSelectPlayer={(p) => setSelectedPlayer(p)}
-              onUpdatePlayer={(updated) => {
-                recordHistory();
-                updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                setSelectedPlayer(updated);
-              }}
+              equipment={equipment}
+              drawings={drawings}
+              selectedTool={selectedTool}
+              selectedColor={selectedColor}
+              strokeWidth={strokeWidth}
+              pitchSection={pitchSection}
+              pitchTheme={pitchTheme}
+              showHalfSpaces={showHalfSpaces}
+              showDepartmentLines={showDepartmentLines}
+              showPhotos={showPhotos}
+              showNames={showNames}
+              showNumbers={showNumbers}
+              showRoles={showRoles}
+              showOrientation={showOrientation}
+              jerseyStyle={jerseyStyle}
               onUpdatePlayers={(updated) => {
                 recordHistory();
                 updatePlayersWithStep(updated);
               }}
-              onOpen3DStudio={(p) => setEditingPlayer3D(p)}
-            />
-          ) : (
-            <div className="w-full aspect-[1050/680] max-h-[75vh] flex items-center justify-center">
-              <TacticalPitch
-                pitchRef={pitchSvgRef}
-                players={players}
-                equipment={equipment}
-                drawings={drawings}
-                selectedTool={selectedTool}
-                selectedColor={selectedColor}
-                strokeWidth={strokeWidth}
-                pitchSection={pitchSection}
-                pitchTheme={pitchTheme}
-                showHalfSpaces={showHalfSpaces}
-                showDepartmentLines={showDepartmentLines}
-                showPhotos={showPhotos}
-                showNames={showNames}
-                showNumbers={showNumbers}
-                showRoles={showRoles}
-                showOrientation={showOrientation}
-                jerseyStyle={jerseyStyle}
-                onUpdatePlayers={(updated) => {
-                  recordHistory();
-                  updatePlayersWithStep(updated);
-                }}
-                onUpdateEquipment={(updated) => {
-                  recordHistory();
-                  updateEquipmentWithStep(updated);
-                }}
-                onUpdateDrawings={(updated) => {
-                  recordHistory();
-                  updateDrawingsWithStep(updated);
-                }}
-                onSelectPlayer={(p) => setSelectedPlayer(p)}
-                onSelectEquipment={(eq) => setSelectedEquipment(eq)}
-                onSelectDrawing={(d) => setSelectedDrawing(d)}
-                onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
-                onOpen3DStudio={(p) => setEditingPlayer3D(p)}
-                onRotatePlayerQuick={(id, delta) => {
-                  recordHistory();
-                  updatePlayersWithStep((prev) =>
-                    prev.map((p) => {
-                      if (p.id !== id) return p;
-                      const newRot = (((p.rotation || 0) + delta) % 360 + 360) % 360;
-                      return { ...p, rotation: Math.round(newRot) };
-                    })
-                  );
-                  if (selectedPlayer && selectedPlayer.id === id) {
-                    const newRot = (((selectedPlayer.rotation || 0) + delta) % 360 + 360) % 360;
-                    setSelectedPlayer({ ...selectedPlayer, rotation: Math.round(newRot) });
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {/* Quick Player Edit Popover on selection */}
-          {selectedPlayer && (
-            <PlayerEditPopover
-              player={selectedPlayer}
-              onClose={() => setSelectedPlayer(null)}
-              onOpen3DStudio={(p) => setEditingPlayer3D(p)}
-              onUpdatePlayer={(updated) => {
+              onUpdateEquipment={(updated) => {
                 recordHistory();
-                updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                setSelectedPlayer(updated);
+                updateEquipmentWithStep(updated);
               }}
-              onRemovePlayer={(id) => {
+              onUpdateDrawings={(updated) => {
                 recordHistory();
-                updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
-                setSelectedPlayer(null);
+                updateDrawingsWithStep(updated);
               }}
-              onApplyJerseyToTeam={(team, jerseyUrl) => {
+              onSelectPlayer={(p) => setSelectedPlayer(p)}
+              onSelectEquipment={(eq) => setSelectedEquipment(eq)}
+              onSelectDrawing={(d) => setSelectedDrawing(d)}
+              onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
+              onRotatePlayerQuick={(id, delta) => {
                 recordHistory();
                 updatePlayersWithStep((prev) =>
-                  prev.map((p) => (p.team === team ? { ...p, jerseyImageUrl: jerseyUrl } : p))
+                  prev.map((p) => {
+                    if (p.id !== id) return p;
+                    const newRot = (((p.rotation || 0) + delta) % 360 + 360) % 360;
+                    return { ...p, rotation: Math.round(newRot) };
+                  })
                 );
-                if (selectedPlayer && selectedPlayer.team === team) {
-                  setSelectedPlayer({ ...selectedPlayer, jerseyImageUrl: jerseyUrl });
-                }
-              }}
-              onApplyColorToTeam={(team, color) => {
-                recordHistory();
-                updatePlayersWithStep((prev) =>
-                  prev.map((p) => (p.team === team ? { ...p, customColor: color } : p))
-                );
-                if (selectedPlayer && selectedPlayer.team === team) {
-                  setSelectedPlayer({ ...selectedPlayer, customColor: color });
+                if (selectedPlayer && selectedPlayer.id === id) {
+                  const newRot = (((selectedPlayer.rotation || 0) + delta) % 360 + 360) % 360;
+                  setSelectedPlayer({ ...selectedPlayer, rotation: Math.round(newRot) });
                 }
               }}
             />
-          )}
+          </div>
         </div>
       </section>
 
@@ -1209,11 +1177,11 @@ export default function App() {
             jerseyStyle={jerseyStyle}
             onCycleJerseyStyle={() =>
               setJerseyStyle((prev) => {
-                if (prev === 'fullbody_3d') return 'realistic';
+                if (prev === 'broadcast') return 'realistic';
                 if (prev === 'realistic') return 'shirt';
                 if (prev === 'shirt') return 'vest';
                 if (prev === 'vest') return 'circle';
-                return 'fullbody_3d';
+                return 'broadcast';
               })
             }
           />
@@ -1270,30 +1238,50 @@ export default function App() {
         onImportData={handleImportData}
       />
 
-      {/* 3D HD Player Studio Modal (Alta Definizione 3D con Orientamento 360° Sinistra/Destra) */}
-      {editingPlayer3D && (
-        <Player3DStudioModal
-          player={editingPlayer3D}
-          onClose={() => setEditingPlayer3D(null)}
-          onApplyOrientation={(deg) => {
+      {/* Floating Comprehensive Player & Jersey Customization Popover */}
+      {selectedPlayer && (
+        <PlayerEditPopover
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          onUpdatePlayer={(updated) => {
             recordHistory();
-            updatePlayersWithStep((prev) =>
-              prev.map((p) => (p.id === editingPlayer3D.id ? { ...p, rotation: deg } : p))
-            );
-            if (selectedPlayer && selectedPlayer.id === editingPlayer3D.id) {
-              setSelectedPlayer({ ...selectedPlayer, rotation: deg });
-            }
-            setEditingPlayer3D((prev) => (prev ? { ...prev, rotation: deg } : null));
+            updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+            setSelectedPlayer(updated);
           }}
-          onApplyPhotoAvatar={(avatarDataUrl) => {
+          onRemovePlayer={(id) => {
+            recordHistory();
+            updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
+            setSelectedPlayer(null);
+          }}
+          onApplyJerseyToTeam={(team, jerseyUrl) => {
             recordHistory();
             updatePlayersWithStep((prev) =>
-              prev.map((p) => (p.id === editingPlayer3D.id ? { ...p, photoUrl: avatarDataUrl } : p))
+              prev.map((p) => (p.team === team ? { ...p, jerseyImageUrl: jerseyUrl } : p))
             );
-            if (selectedPlayer && selectedPlayer.id === editingPlayer3D.id) {
-              setSelectedPlayer({ ...selectedPlayer, photoUrl: avatarDataUrl });
+            if (selectedPlayer && selectedPlayer.team === team) {
+              setSelectedPlayer({ ...selectedPlayer, jerseyImageUrl: jerseyUrl });
             }
-            setEditingPlayer3D((prev) => (prev ? { ...prev, photoUrl: avatarDataUrl } : null));
+          }}
+          onApplyColorToTeam={(team, color, secondaryColor) => {
+            recordHistory();
+            updatePlayersWithStep((prev) =>
+              prev.map((p) =>
+                p.team === team
+                  ? {
+                      ...p,
+                      customColor: color,
+                      ...(secondaryColor ? { secondaryColor } : {}),
+                    }
+                  : p
+              )
+            );
+            if (selectedPlayer && selectedPlayer.team === team) {
+              setSelectedPlayer({
+                ...selectedPlayer,
+                customColor: color,
+                ...(secondaryColor ? { secondaryColor } : {}),
+              });
+            }
           }}
         />
       )}

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfigJson from '../firebase-applet-config.json';
 
 // Read config from env or fallback to config JSON
@@ -21,3 +21,16 @@ const databaseId = firebaseConfigJson.firestoreDatabaseId && firebaseConfigJson.
 
 export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
 export { app };
+
+// Test Firestore connection on boot safely without throwing uncaught errors
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn('Firestore client is offline or network restricted.');
+    }
+  }
+}
+testConnection();
+

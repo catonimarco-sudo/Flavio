@@ -439,7 +439,7 @@ export const SquadModal: React.FC<SquadModalProps> = ({
                 {/* Face & Avatar Picker */}
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                    Volto del Giocatore (Foto o Avatar 3D)
+                    Volto del Giocatore (Foto o Avatar)
                   </label>
                   <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-900 border border-slate-800">
                     {/* Live Preview */}

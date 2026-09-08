@@ -1,6 +1,5 @@
 import React from 'react';
 import { PlacedPlayer, JerseyStyle } from '../types';
-import { backViewImg, frontViewImg, sideViewImg } from '../utils/player3DTextures';
 import { getKitVisuals } from '../utils/kitVisuals';
 
 interface PlayerPitchNodeProps {
@@ -16,7 +15,6 @@ interface PlayerPitchNodeProps {
   onSelect: (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => void;
   onStartRotate?: (playerId: string, e: React.PointerEvent | React.TouchEvent) => void;
   onRotateQuick?: (playerId: string, deltaDeg: number) => void;
-  onOpen3DStudio?: (player: PlacedPlayer) => void;
   onDoubleClick?: (player: PlacedPlayer) => void;
 }
 
@@ -33,7 +31,6 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
   onSelect,
   onStartRotate,
   onRotateQuick,
-  onOpen3DStudio,
   onDoubleClick,
 }) => {
   const { team, role, number, name, photoUrl, rotation = 0 } = player;
@@ -111,15 +108,31 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
 
   const hasPhoto = showPhotos && !!photoUrl;
 
-  // Clean formatted name in bold uppercase (like TV broadcast lineups)
-  const cleanLastName = name.toUpperCase().replace(/\s[A-Z]\.?$/, '');
-  const displayName = cleanLastName.length > 12 ? cleanLastName.substring(0, 11) + '…' : cleanLastName;
+  // Clean formatted name in bold uppercase (like TV broadcast lineups in reference photo)
+  // Remove trailing initials e.g. "Dybala P." -> "DYBALA", "Jorginho F." -> "JORGINHO F."
+  const cleanLastName = name.replace(/\s+[A-Z]\.?$/i, '').trim().toUpperCase();
+  const displayName = cleanLastName.length > 15 ? cleanLastName.substring(0, 14) + '…' : cleanLastName;
 
-  const roleTagWidth = 24;
-  const numTagWidth = 20;
-  const nameTagWidth = Math.max(52, displayName.length * 7.5 + 16);
-  const totalTagWidth = (showRoles ? roleTagWidth : (showNumbers && !showRoles ? numTagWidth : 0)) + (showNames ? nameTagWidth : 0);
-  const tagHalf = totalTagWidth / 2;
+  // TV Broadcast Nameplate dimensions (High visibility and legibility as in TV broadcast)
+  const hasNumOrRole = showNumbers || showRoles;
+  const numBoxWidth = hasNumOrRole ? 20 : 0;
+  const charWidth = displayName.length > 11 ? 6.2 : 7.2;
+  const nameBoxWidth = showNames ? Math.max(50, displayName.length * charWidth + 14) : 0;
+  const totalPlateWidth = numBoxWidth + nameBoxWidth;
+  const plateHalf = totalPlateWidth / 2;
+  const plateHeight = 17;
+
+  // Ultra-clear contrast for shirt number visibility
+  const getContrastNumberColor = (hex: string) => {
+    if (!hex || !hex.startsWith('#') || hex.length < 7) return '#ffffff';
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    return lum > 155 ? '#0f172a' : '#ffffff';
+  };
+  const contrastNumberColor = getContrastNumberColor(primaryColor);
+  const numberOutlineColor = contrastNumberColor === '#ffffff' ? '#000000' : '#ffffff';
 
   // Derive realistic skin and hair based on player characteristics matching reference graphics
   if (name.includes('Lukaku') || name.includes('Ndicka') || name.includes('Koné') || name.includes('Kone')) {
@@ -162,8 +175,11 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
       className={`cursor-grab active:cursor-grabbing select-none group touch-none tactical-draggable transition-transform duration-75 ${
         isDragging ? 'tactical-dragging-node' : ''
       }`}
-      onPointerDown={(e) => onSelect(player, e)}
-      onTouchStart={(e) => {
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onSelect(player, e);
+      }}
+      onClick={(e) => {
         e.stopPropagation();
         onSelect(player, e);
       }}
@@ -195,24 +211,22 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
           <stop offset="100%" stopColor="#000000" stopOpacity="0.22" />
         </radialGradient>
 
-        {/* Torso Clip Path for Broad Athletic Jersey */}
+        {/* Sky Sport Tactical Football Jersey Clip Path */}
         <clipPath id={`clip-jersey-${player.id}`}>
           <path
             d="
-              M -6, -3.5
-              L -18, -1.5
-              C -23, 0 -26, 2 -27.5, 5
-              L -24, 15
-              L -18.5, 12
-              L -15, 8
-              L -14.5, 27
-              L 14.5, 27
-              L 15, 8
-              L 18.5, 12
-              L 24, 15
-              L 27.5, 5
-              C 26, 2 23, 0 18, -1.5
-              L 6, -3.5
+              M -6.5,-4
+              L -17.5,-1.5
+              C -20.5,1.5 -23,5 -24.5,9.5
+              L -17,13
+              L -13,7.5
+              L -12.5,24
+              Q 0,25.5 12.5,24
+              L 13,7.5
+              L 17,13
+              L 24.5,9.5
+              C 23,5 20.5,1.5 17.5,-1.5
+              L 6.5,-4
               Z
             "
           />
@@ -222,22 +236,35 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
         <clipPath id={`clip-shirt-${player.id}`}>
           <path
             d="
-              M -7,-5
-              L -16,-3
-              L -22,7
-              L -15,11
-              L -11,4
-              L -11,20
-              L 11,20
-              L 11,4
-              L 15,11
-              L 22,7
-              L 16,-3
-              L 7,-5
+              M -6.5,-4
+              L -17.5,-1.5
+              C -20.5,1.5 -23,5 -24.5,9.5
+              L -17,13
+              L -13,7.5
+              L -12.5,24
+              Q 0,25.5 12.5,24
+              L 13,7.5
+              L 17,13
+              L 24.5,9.5
+              C 23,5 20.5,1.5 17.5,-1.5
+              L 6.5,-4
               Z
             "
           />
         </clipPath>
+
+        {/* TV Broadcast Nameplate Gradient (Deep TV glass) */}
+        <linearGradient id={`plate-grad-${player.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#1e293b" stopOpacity="0.98" />
+          <stop offset="60%" stopColor="#0f172a" stopOpacity="0.98" />
+          <stop offset="100%" stopColor="#020617" stopOpacity="0.98" />
+        </linearGradient>
+
+        {/* TV Broadcast Number Box Gradient */}
+        <linearGradient id={`plate-num-grad-${player.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={team === 'away' ? '#0284c7' : primaryColor} stopOpacity="1" />
+          <stop offset="100%" stopColor={team === 'away' ? '#0369a1' : '#090d16'} stopOpacity="1" />
+        </linearGradient>
       </defs>
 
       {/* Dynamic Ground Elevation Shadow when Dragging */}
@@ -350,18 +377,18 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
             <text x="0" y="3.8" textAnchor="middle" fontSize="10.5" fill="#38bdf8" fontWeight="bold">◀</text>
           </g>
 
-          {/* Open 3D HD Studio Modal */}
+          {/* Invert Orientation (180°) */}
           <g
             onClick={(e) => {
               e.stopPropagation();
-              onOpen3DStudio?.(player);
+              onRotateQuick?.(player.id, 180);
             }}
             transform="translate(0, 0)"
             className="hover:scale-115 active:scale-95 transition-transform"
-            title="Apri Studio 3D HD (Ruota 360°)"
+            title="Inverti Orientamento (180°)"
           >
-            <rect x="-16" y="-8.5" width="32" height="17" rx="4" fill="#0b1120" stroke="#f59e0b" strokeWidth="1.2" />
-            <text x="0" y="3.8" textAnchor="middle" fontSize="9" fill="#f59e0b" fontWeight="black">3D HD</text>
+            <rect x="-14" y="-8.5" width="28" height="17" rx="4" fill="#0b1120" stroke="#f59e0b" strokeWidth="1.2" />
+            <text x="0" y="3.8" textAnchor="middle" fontSize="9" fill="#f59e0b" fontWeight="black">180°</text>
           </g>
 
           {/* Quick Rotate Right (+45°) */}
@@ -381,73 +408,37 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
       )}
 
       {/* ========================================================
-          VISUAL MODE 0: FULL-BODY 3D HD (MATCHING PHOTO REFERENCE)
-          High Definition Full Body: Standing upright on grass with
-          cleats, diamond shin socks, shorts, athletic jersey & left/right orientation
+          VISUAL MODE 1: REALISTIC TACTICAL JERSEY & TV BROADCAST
           ======================================================== */}
-      {jerseyStyle === 'fullbody_3d' ? (
-        <g className="filter drop-shadow-xl select-none">
-          {/* Ground Pitch Contact Shadow */}
-          <ellipse cx="0" cy="46" rx="20" ry="5.5" fill="#000000" opacity="0.5" />
-
-          {/* Orientation Dynamic Body Group */}
-          {(() => {
-            const kitStyle = getKitVisuals(player);
-            return (
-              <g transform={isFacingLeft ? 'scale(-1, 1)' : undefined}>
-                {/* High-Resolution Photorealistic 3D Character Render Image */}
-                <image
-                  href={isFacingBack ? backViewImg : isFacingFront ? frontViewImg : sideViewImg}
-                  x="-26"
-                  y="-32"
-                  width="52"
-                  height="78"
-                  preserveAspectRatio="xMidYMid meet"
-                  style={{
-                    filter: kitStyle.filter,
-                  }}
-                />
-
-                {/* Dynamic Jersey Number on Back/Front */}
-                {(isFacingBack || isFacingFront) && showNumbers && (
-                  <text
-                    x="0"
-                    y={isFacingBack ? "-2" : "2"}
-                    textAnchor="middle"
-                    fontSize="11.5"
-                    fontWeight="900"
-                    fill={kitStyle.numberColor}
-                    stroke={kitStyle.strokeColor}
-                    strokeWidth="0.8"
-                    className="font-sans font-black select-none"
-                    style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}
-                  >
-                    {number}
-                  </text>
-                )}
-
-                {/* Player Surname on Back */}
-                {isFacingBack && (
-                  <text
-                    x="0"
-                    y="-13"
-                    textAnchor="middle"
-                    fontSize="5.5"
-                    fontWeight="900"
-                    fill={kitStyle.numberColor}
-                    stroke={kitStyle.strokeColor}
-                    strokeWidth="0.3"
-                    className="font-sans font-black uppercase tracking-wider select-none"
-                  >
-                    {displayName}
-                  </text>
-                )}
-              </g>
-            );
-          })()}
-        </g>
-      ) : jerseyStyle === 'realistic' ? (
+      {jerseyStyle === 'broadcast' || jerseyStyle === 'realistic' ? (
         <g className="filter drop-shadow-xl select-none" transform={isFacingLeft ? 'scale(-1, 1)' : undefined}>
+          {/* --- 0. TV Selection Highlight Outline --- */}
+          {isSelected && (
+            <path
+              d="
+                M -6.5,-4
+                L -17.5,-1.5
+                C -20.5,1.5 -23,5 -24.5,9.5
+                L -17,13
+                L -13,7.5
+                L -12.5,24
+                Q 0,25.5 12.5,24
+                L 13,7.5
+                L 17,13
+                L 24.5,9.5
+                C 23,5 20.5,1.5 17.5,-1.5
+                L 6.5,-4
+                Z
+              "
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth="3.2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              opacity="0.9"
+            />
+          )}
+
           {/* --- 1. Athletic Neck connecting head & jersey --- */}
           <path
             d="M -3.6,-8.5 L -4,-3 L 4,-3 L 3.6,-8.5 Z"
@@ -460,28 +451,28 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
             opacity="0.2"
           />
 
-          {/* --- 2. Head & Vector Face (Compact, Scaled 1:4 with Shoulders) --- */}
+          {/* --- 2. Head & Vector Face (Compact, Scaled with Shoulders) --- */}
           <g transform="translate(0, -14.5)">
             {hasPhoto ? (
               <g>
                 <clipPath id={`clip-realhead-${player.id}`}>
-                  <circle cx="0" cy="0" r="8.5" />
+                  <circle cx="0" cy="0" r="11" />
                 </clipPath>
                 {/* Outer metallic frame ring */}
                 <circle
                   cx="0"
                   cy="0"
-                  r="9.2"
+                  r="12"
                   fill="#0b1120"
-                  stroke={isSelected ? '#38bdf8' : secondaryColor}
-                  strokeWidth="1.2"
+                  stroke={isSelected ? '#38bdf8' : '#ffffff'}
+                  strokeWidth="1.5"
                 />
                 <image
                   href={photoUrl}
-                  x="-9"
-                  y="-9"
-                  width="18"
-                  height="18"
+                  x="-12"
+                  y="-12"
+                  width="24"
+                  height="24"
                   preserveAspectRatio="xMidYMid slice"
                   clipPath={`url(#clip-realhead-${player.id})`}
                 />
@@ -597,48 +588,34 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
             )}
           </g>
 
-          {/* --- 3. Arms (Bare Skin Forearms under Sleeves) --- */}
-          {/* Left Forearm */}
-          <path
-            d="M -23.5,14.5 L -20.5,22 C -20,23.5 -16.5,23 -17.5,20.5 L -19,12 Z"
-            fill={skinTone}
-          />
-          {/* Right Forearm */}
-          <path
-            d="M 23.5,14.5 L 20.5,22 C 20,23.5 16.5,23 17.5,20.5 L 19,12 Z"
-            fill={skinTone}
-          />
-
-          {/* --- 4. Broad Athletic Football Jersey (56px Wide) --- */}
+          {/* --- 3. Sky Sport Football Kit Jersey (Clean Silhouette, NO Bare Arms) --- */}
           {player.jerseyImageUrl ? (
             /* Custom Uploaded Jersey Texture */
             <g clipPath={`url(#clip-jersey-${player.id})`}>
-              <rect x="-30" y="-6" width="60" height="36" fill={primaryColor} />
+              <rect x="-26" y="-6" width="52" height="34" fill={primaryColor} />
               <image
                 href={player.jerseyImageUrl}
-                x="-29"
-                y="-4"
-                width="58"
-                height="33"
+                x="-25"
+                y="-5"
+                width="50"
+                height="32"
                 preserveAspectRatio="xMidYMid slice"
               />
-              {/* 3D Depth & Fabric Lighting */}
+              {/* 3D Fabric Lighting */}
               <path
                 d="
-                  M -6,-3.5
-                  L -18,-1.5
-                  C -23,0 -26,2 -27.5,5
-                  L -24,15
-                  L -18.5,12
-                  L -15,8
-                  L -14.5,27
-                  L 14.5,27
-                  L 15,8
-                  L 18.5,12
-                  L 24,15
-                  L 27.5,5
-                  C 26,2 23,0 18,-1.5
-                  L 6,-3.5
+                  M -6.5,-4
+                  L -17.5,-1.5
+                  C -20.5,1.5 -23,5 -24.5,9.5
+                  L -17,13
+                  L -13,7.5
+                  L -12.5,24
+                  Q 0,25.5 12.5,24
+                  L 13,7.5
+                  L 17,13
+                  L 24.5,9.5
+                  C 23,5 20.5,1.5 17.5,-1.5
+                  L 6.5,-4
                   Z
                 "
                 fill={`url(#${gradId})`}
@@ -647,102 +624,114 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
             </g>
           ) : (
             <>
-              {/* Base Jersey Torso & Sleeves */}
+              {/* Base Football Jersey Kit */}
               <path
                 d="
-                  M -6,-3.5
-                  L -18,-1.5
-                  C -23,0 -26,2 -27.5,5
-                  L -24,15
-                  L -18.5,12
-                  L -15,8
-                  L -14.5,27
-                  L 14.5,27
-                  L 15,8
-                  L 18.5,12
-                  L 24,15
-                  L 27.5,5
-                  C 26,2 23,0 18,-1.5
-                  L 6,-3.5
+                  M -6.5,-4
+                  L -17.5,-1.5
+                  C -20.5,1.5 -23,5 -24.5,9.5
+                  L -17,13
+                  L -13,7.5
+                  L -12.5,24
+                  Q 0,25.5 12.5,24
+                  L 13,7.5
+                  L 17,13
+                  L 24.5,9.5
+                  C 23,5 20.5,1.5 17.5,-1.5
+                  L 6.5,-4
                   Z
                 "
                 fill={primaryColor}
               />
-              {/* Fabric Shading Light Overlay */}
+              {/* 3D Fabric Lighting Overlay */}
               <path
                 d="
-                  M -6,-3.5
-                  L -18,-1.5
-                  C -23,0 -26,2 -27.5,5
-                  L -24,15
-                  L -18.5,12
-                  L -15,8
-                  L -14.5,27
-                  L 14.5,27
-                  L 15,8
-                  L 18.5,12
-                  L 24,15
-                  L 27.5,5
-                  C 26,2 23,0 18,-1.5
-                  L 6,-3.5
+                  M -6.5,-4
+                  L -17.5,-1.5
+                  C -20.5,1.5 -23,5 -24.5,9.5
+                  L -17,13
+                  L -13,7.5
+                  L -12.5,24
+                  Q 0,25.5 12.5,24
+                  L 13,7.5
+                  L 17,13
+                  L 24.5,9.5
+                  C 23,5 20.5,1.5 17.5,-1.5
+                  L 6.5,-4
                   Z
                 "
                 fill={`url(#${gradId})`}
                 stroke="#ffffff"
-                strokeWidth="0.7"
-                strokeOpacity="0.3"
+                strokeWidth="0.8"
+                strokeOpacity="0.35"
               />
 
-              {/* AS Roma / Modern Golden Raglan Piping along Shoulders */}
+              {/* Natural Shoulder Light Reflection */}
               <path
-                d="M -5.5,-3 Q -10,3 -19,12"
-                stroke={secondaryColor}
-                strokeWidth="1.4"
-                fill="none"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 5.5,-3 Q 10,3 19,12"
-                stroke={secondaryColor}
-                strokeWidth="1.4"
+                d="M -17.5,-1.5 L -6.5,-4 Q 0,-3.5 6.5,-4 L 17.5,-1.5"
+                stroke="#ffffff"
+                strokeWidth="0.8"
+                strokeOpacity="0.4"
                 fill="none"
                 strokeLinecap="round"
               />
 
-              {/* Golden Sleeve Cuffs (Trim band on sleeves) */}
+              {/* Modern Raglan Seams along Shoulders to Underarms */}
               <path
-                d="M -24,15 L -18.5,12"
+                d="M -6.5,-4 Q -9.5,1 -13,7.5"
                 stroke={secondaryColor}
-                strokeWidth="2.2"
-                strokeLinecap="round"
+                strokeWidth="1.2"
+                strokeOpacity="0.65"
                 fill="none"
+                strokeLinecap="round"
               />
               <path
-                d="M 24,15 L 18.5,12"
+                d="M 6.5,-4 Q 9.5,1 13,7.5"
                 stroke={secondaryColor}
-                strokeWidth="2.2"
-                strokeLinecap="round"
+                strokeWidth="1.2"
+                strokeOpacity="0.65"
                 fill="none"
+                strokeLinecap="round"
               />
 
-              {/* Breathable Mesh Side Panels */}
+              {/* Sleeve Cuffs - Contrasting Trim Bands */}
+              <line
+                x1="-24.5"
+                y1="9.5"
+                x2="-17"
+                y2="13"
+                stroke={secondaryColor}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              <line
+                x1="24.5"
+                y1="9.5"
+                x2="17"
+                y2="13"
+                stroke={secondaryColor}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+
+              {/* Breathable Mesh Side Seams */}
               <path
-                d="M -14.5,11 Q -13,18 -14.5,25"
+                d="M -13,8.5 L -12.5,23.5"
                 stroke="#000000"
-                strokeWidth="1.8"
-                strokeOpacity="0.22"
+                strokeWidth="1.6"
+                strokeOpacity="0.25"
                 fill="none"
               />
               <path
-                d="M 14.5,11 Q 13,18 14.5,25"
+                d="M 13,8.5 L 12.5,23.5"
                 stroke="#000000"
-                strokeWidth="1.8"
-                strokeOpacity="0.22"
+                strokeWidth="1.6"
+                strokeOpacity="0.25"
                 fill="none"
               />
 
-              {/* AS Roma Crest on Left Chest (Heart) */}
-              <g transform="translate(-8.5, 6.5) scale(0.85)">
+              {/* Club Crest on Left Chest (Heart) */}
+              <g transform="translate(-6.8, 5) scale(0.8)">
                 <path
                   d="M -3,-2.2 L 3,-2.2 L 3,2 C 3,4.5 0,6 0,6 C 0,6 -3,4.5 -3,2 Z"
                   fill={secondaryColor}
@@ -757,7 +746,7 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
 
               {/* Technical Brand Logo on Right Chest */}
               <path
-                d="M 7,6 Q 9,7.5 10.5,5.5"
+                d="M 5.8,5.5 Q 8,7 9.5,4.8"
                 fill="none"
                 stroke={secondaryColor}
                 strokeWidth="1.1"
@@ -769,7 +758,8 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
               {player.sponsorText && (
                 <text
                   x="0"
-                  y="10"
+                  y="9.5"
+                  transform={isFacingLeft ? 'scale(-1, 1)' : undefined}
                   textAnchor="middle"
                   fontSize="3.8"
                   fontWeight="900"
@@ -783,65 +773,66 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
             </>
           )}
 
-          {/* Inner Back Collar Depth & Golden Trim */}
-          <ellipse cx="0" cy="-3.5" rx="5.8" ry="2" fill={`url(#${collarId})`} />
+          {/* Inner Back Collar Depth */}
+          <ellipse cx="0" cy="-3.8" rx="6" ry="2" fill="#0b0f19" opacity="0.8" />
+          {/* V-neck / Crew Collar Ribbing */}
           <path
-            d="M -6,-3.5 Q 0,1 6,-3.5"
+            d="M -6.5,-4 Q 0,2.5 6.5,-4"
             stroke={secondaryColor}
-            strokeWidth="1.8"
+            strokeWidth="2.2"
             strokeLinecap="round"
             fill="none"
           />
+          <path
+            d="M 0,0.5 L 0,3.5"
+            stroke={secondaryColor}
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.85"
+          />
 
-          {/* Torso Edge Outline */}
+          {/* Jersey Clean Outer Contour */}
           <path
             d="
-              M -6,-3.5
-              L -18,-1.5
-              C -23,0 -26,2 -27.5,5
-              L -24,15
-              L -18.5,12
-              L -15,8
-              L -14.5,27
-              L 14.5,27
-              L 15,8
-              L 18.5,12
-              L 24,15
-              L 27.5,5
-              C 26,2 23,0 18,-1.5
-              L 6,-3.5
+              M -6.5,-4
+              L -17.5,-1.5
+              C -20.5,1.5 -23,5 -24.5,9.5
+              L -17,13
+              L -13,7.5
+              L -12.5,24
+              Q 0,25.5 12.5,24
+              L 13,7.5
+              L 17,13
+              L 24.5,9.5
+              C 23,5 20.5,1.5 17.5,-1.5
+              L 6.5,-4
               Z
             "
             fill="none"
             stroke="#ffffff"
-            strokeWidth="0.7"
-            strokeOpacity="0.3"
+            strokeWidth="0.8"
+            strokeOpacity="0.35"
           />
 
-          {/* Big Bold Golden Athletic Jersey Number on Chest (Centered) */}
+          {/* Big Bold Athletic Jersey Number on Chest (Centered, Counter-flipped if Facing Left) */}
           {showNumbers && (
-            <g>
+            <g
+              className="pointer-events-none select-none"
+              transform={isFacingLeft ? 'scale(-1, 1)' : undefined}
+            >
               <text
                 x="0"
-                y="20"
+                y="18"
                 textAnchor="middle"
-                fontSize="15"
+                fontSize="15.5"
                 fontWeight="900"
-                fill="#000000"
-                opacity="0.5"
-                className="font-sans select-none font-black"
-              >
-                {number}
-              </text>
-              <text
-                x="0"
-                y="19.2"
-                textAnchor="middle"
-                fontSize="14.5"
-                fontWeight="900"
-                fill={secondaryColor}
-                stroke="#000000"
-                strokeWidth="0.4"
+                fill={contrastNumberColor}
+                stroke={numberOutlineColor}
+                strokeWidth="3.2"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                style={{ paintOrder: 'stroke fill' }}
                 className="font-sans select-none font-black tracking-tight"
               >
                 {number}
@@ -891,90 +882,96 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
           {player.jerseyImageUrl ? (
             /* Custom Jersey in Shirt Mode */
             <g clipPath={`url(#clip-shirt-${player.id})`}>
-              <rect x="-24" y="-6" width="48" height="28" fill={primaryColor} />
+              <rect x="-26" y="-6" width="52" height="34" fill={primaryColor} />
               <image
                 href={player.jerseyImageUrl}
-                x="-22"
-                y="-6"
-                width="44"
-                height="28"
+                x="-25"
+                y="-5"
+                width="50"
+                height="32"
                 preserveAspectRatio="xMidYMid slice"
               />
               <path
                 d="
-                  M -7,-5
-                  L -16,-3
-                  L -22,7
-                  L -15,11
-                  L -11,4
-                  L -11,20
-                  L 11,20
-                  L 11,4
-                  L 15,11
-                  L 22,7
-                  L 16,-3
-                  L 7,-5
+                  M -6.5,-4
+                  L -17.5,-1.5
+                  C -20.5,1.5 -23,5 -24.5,9.5
+                  L -17,13
+                  L -13,7.5
+                  L -12.5,24
+                  Q 0,25.5 12.5,24
+                  L 13,7.5
+                  L 17,13
+                  L 24.5,9.5
+                  C 23,5 20.5,1.5 17.5,-1.5
+                  L 6.5,-4
                   Z
                 "
                 fill="none"
                 stroke="#ffffff"
-                strokeWidth="1.8"
+                strokeWidth="1.6"
                 strokeLinejoin="round"
               />
             </g>
           ) : (
             <path
               d="
-                M -7,-5
-                L -16,-3
-                L -22,7
-                L -15,11
-                L -11,4
-                L -11,20
-                L 11,20
-                L 11,4
-                L 15,11
-                L 22,7
-                L 16,-3
-                L 7,-5
+                M -6.5,-4
+                L -17.5,-1.5
+                C -20.5,1.5 -23,5 -24.5,9.5
+                L -17,13
+                L -13,7.5
+                L -12.5,24
+                Q 0,25.5 12.5,24
+                L 13,7.5
+                L 17,13
+                L 24.5,9.5
+                C 23,5 20.5,1.5 17.5,-1.5
+                L 6.5,-4
                 Z
               "
               fill={primaryColor}
               stroke="#ffffff"
-              strokeWidth="1.8"
+              strokeWidth="1.6"
               strokeLinejoin="round"
             />
           )}
 
+          {/* Collar & Seams */}
+          <ellipse cx="0" cy="-3.8" rx="6" ry="2" fill="#0b0f19" opacity="0.8" />
           <path
-            d="M -6,-5 Q 0,-1 6,-5"
+            d="M -6.5,-4 Q 0,2.5 6.5,-4"
             fill="none"
             stroke={secondaryColor}
             strokeWidth="2"
             strokeLinecap="round"
           />
           <path
-            d="M 0,-2 L 0,3"
+            d="M 0,0.5 L 0,3.5"
             fill="none"
             stroke={secondaryColor}
             strokeWidth="1.5"
             strokeLinecap="round"
           />
 
-          <line x1="-21" y1="6" x2="-16" y2="9.5" stroke={secondaryColor} strokeWidth="1.5" opacity="0.8" />
-          <line x1="21" y1="6" x2="16" y2="9.5" stroke={secondaryColor} strokeWidth="1.5" opacity="0.8" />
+          {/* Sleeve Cuffs */}
+          <line x1="-24.5" y1="9.5" x2="-17" y2="13" stroke={secondaryColor} strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="24.5" y1="9.5" x2="17" y2="13" stroke={secondaryColor} strokeWidth="2.2" strokeLinecap="round" />
 
           {showNumbers && (
             <text
               x="0"
-              y="14"
+              y="18"
               textAnchor="middle"
-              fontSize="14.5"
+              fontSize="15.5"
               fontWeight="900"
-              fill={secondaryColor}
-              stroke="#0f172a"
-              strokeWidth="0.5"
-              className="font-sans select-none tracking-tight"
+              fill={contrastNumberColor}
+              stroke={numberOutlineColor}
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              style={{ paintOrder: 'stroke fill' }}
+              className="font-sans select-none tracking-tight font-black pointer-events-none"
             >
               {number}
             </text>
@@ -999,12 +996,17 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
           {showNumbers && (
             <text
               x="0"
-              y="11"
+              y="11.5"
               textAnchor="middle"
-              fontSize="12"
+              fontSize="13.5"
               fontWeight="900"
-              fill={secondaryColor}
-              className="font-sans font-black"
+              fill={contrastNumberColor}
+              stroke={numberOutlineColor}
+              strokeWidth="2.8"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              style={{ paintOrder: 'stroke fill' }}
+              className="font-sans font-black pointer-events-none"
             >
               {number}
             </text>
@@ -1057,12 +1059,15 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
                   x="0"
                   y="5.5"
                   textAnchor="middle"
-                  fontSize="14"
+                  fontSize="15"
                   fontWeight="900"
-                  fill="#ffffff"
-                  stroke="#000000"
-                  strokeWidth="0.8"
-                  className="font-sans select-none"
+                  fill={contrastNumberColor}
+                  stroke={numberOutlineColor}
+                  strokeWidth="3.2"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  style={{ paintOrder: 'stroke fill' }}
+                  className="font-sans select-none font-black pointer-events-none"
                 >
                   {number}
                 </text>
@@ -1074,10 +1079,15 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
                 x="0"
                 y="5.5"
                 textAnchor="middle"
-                fontSize="14"
+                fontSize="15"
                 fontWeight="900"
-                fill={secondaryColor}
-                className="font-sans select-none"
+                fill={contrastNumberColor}
+                stroke={numberOutlineColor}
+                strokeWidth="3.2"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                style={{ paintOrder: 'stroke fill' }}
+                className="font-sans select-none font-black pointer-events-none"
               >
                 {number}
               </text>
@@ -1087,107 +1097,96 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
       )}
 
       {/* ========================================================
-          PROBABILI XI GOLDEN RIBBON BANNER (AS IN REFERENCE PHOTO)
-          Yellow Swallowtail Ribbon Plaque with Bold Surname
+          TV BROADCAST NAMEPLATE PLAQUE (BELOW THE PLAYER)
+          Ultra-visible, high-contrast, broadcast TV graphic
+          matching the reference photo!
           ======================================================== */}
       {(showRoles || showNames || showNumbers) && (
-        <g transform={`translate(0, ${jerseyStyle === 'fullbody_3d' ? 56 : 28})`} className="pointer-events-none filter drop-shadow-md select-none">
-          {showNames ? (
+        <g
+          transform={`translate(0, ${jerseyStyle === 'circle' ? 19 : 26})`}
+          className="pointer-events-none filter drop-shadow-md select-none"
+        >
+          {/* Main Background Frame - Sky Sport High-Contrast White Plaque */}
+          <rect
+            x={-plateHalf}
+            y="0"
+            width={totalPlateWidth}
+            height={plateHeight}
+            rx="3.5"
+            fill="#ffffff"
+            stroke="#94a3b8"
+            strokeWidth="0.9"
+            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.65))' }}
+          />
+
+          {/* Left Number / Role Box */}
+          {hasNumOrRole && (
             <g>
-              {/* Golden Yellow Ribbon Banner Base with Notch on Right */}
-              <path
-                d={`
-                  M ${-tagHalf}, 0
-                  L ${tagHalf}, 0
-                  L ${tagHalf - 4.5}, 8
-                  L ${tagHalf}, 16
-                  L ${-tagHalf}, 16
-                  Z
-                `}
-                fill="#f59e0b"
-                stroke="#d97706"
-                strokeWidth="0.8"
+              <rect
+                x={-plateHalf}
+                y="0"
+                width={numBoxWidth}
+                height={plateHeight}
+                rx="3.5"
+                fill={primaryColor}
+                stroke="#94a3b8"
+                strokeWidth="0.9"
               />
-
-              {/* Optional Role Badge on the left */}
-              {showRoles ? (
-                <g>
-                  <rect
-                    x={-tagHalf}
-                    y="0"
-                    width={roleTagWidth}
-                    height="16"
-                    fill={roleBadgeBg}
-                    stroke="#d97706"
-                    strokeWidth="0.8"
-                  />
-                  <text
-                    x={-tagHalf + roleTagWidth / 2}
-                    y="11.5"
-                    textAnchor="middle"
-                    fontSize="8.5"
-                    fontWeight="900"
-                    fill={roleBadgeText}
-                    className="font-mono tracking-tight font-black"
-                  >
-                    {role}
-                  </text>
-                </g>
-              ) : (showNumbers && !showRoles) ? (
-                <g>
-                  <rect
-                    x={-tagHalf}
-                    y="0"
-                    width={numTagWidth}
-                    height="16"
-                    fill="#1e293b"
-                    stroke="#d97706"
-                    strokeWidth="0.8"
-                  />
-                  <text
-                    x={-tagHalf + numTagWidth / 2}
-                    y="11.5"
-                    textAnchor="middle"
-                    fontSize="9"
-                    fontWeight="900"
-                    fill="#facc15"
-                    className="font-mono tracking-tight font-black"
-                  >
-                    {number}
-                  </text>
-                </g>
+              {/* Divider between Number Box and Name Box */}
+              <line
+                x1={-plateHalf + numBoxWidth}
+                y1="0"
+                x2={-plateHalf + numBoxWidth}
+                y2={plateHeight}
+                stroke="#cbd5e1"
+                strokeWidth="1"
+              />
+              {showNumbers ? (
+                <text
+                  x={-plateHalf + numBoxWidth / 2}
+                  y="12.2"
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontWeight="900"
+                  fill="#ffffff"
+                  className="font-mono tracking-tight font-black"
+                  style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.7))' }}
+                >
+                  {number}
+                </text>
+              ) : showRoles ? (
+                <text
+                  x={-plateHalf + numBoxWidth / 2}
+                  y="12"
+                  textAnchor="middle"
+                  fontSize="8.5"
+                  fontWeight="900"
+                  fill="#ffffff"
+                  className="font-mono tracking-tight font-black"
+                >
+                  {role}
+                </text>
               ) : null}
+            </g>
+          )}
 
-              {/* Bold Uppercase Player Surname */}
+          {/* Right Player Surname - Bold, crisp, dark navy (#0f172a), ultra-visible */}
+          {showNames && (
+            <g>
               <text
-                x={showRoles ? -tagHalf + roleTagWidth + (nameTagWidth / 2) - 2 : (showNumbers && !showRoles) ? -tagHalf + numTagWidth + (nameTagWidth / 2) - 2 : -2}
-                y="11.5"
+                x={-plateHalf + numBoxWidth + nameBoxWidth / 2}
+                y="12.2"
                 textAnchor="middle"
-                fontSize="9.5"
+                fontSize={displayName.length > 11 ? "9.5" : "10.5"}
                 fontWeight="900"
                 fill="#0f172a"
-                className="font-sans tracking-wider uppercase select-none font-black"
+                letterSpacing="0.04em"
+                className="font-sans font-black tracking-wider select-none uppercase"
               >
                 {displayName}
               </text>
             </g>
-          ) : showRoles ? (
-            /* Mini role-only pill */
-            <g>
-              <rect x="-16" y="0" width="32" height="16" rx="3" fill={roleBadgeBg} stroke="#070d19" strokeWidth="1" />
-              <text
-                x="0"
-                y="11.5"
-                textAnchor="middle"
-                fontSize="9.5"
-                fontWeight="900"
-                fill={roleBadgeText}
-                className="font-mono font-black"
-              >
-                {role}
-              </text>
-            </g>
-          ) : null}
+          )}
         </g>
       )}
     </g>

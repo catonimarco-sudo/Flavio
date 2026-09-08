@@ -148,7 +148,9 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
           id="btn-cycle-jersey"
           onClick={onCycleJerseyStyle}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold transition-all shadow-sm ${
-            jerseyStyle === 'realistic'
+            jerseyStyle === 'broadcast'
+              ? 'bg-yellow-500/25 text-yellow-300 border-yellow-500/60 hover:bg-yellow-500/35 shadow-yellow-500/10'
+              : jerseyStyle === 'realistic'
               ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
               : jerseyStyle === 'shirt'
               ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 hover:bg-blue-600/30'
@@ -156,16 +158,20 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
               ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
               : 'bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-300'
           }`}
-          title="Cambia grafica giocatori: 3D Realistica, Maglia 2D, Pettorine o Cerchio"
+          title="Cambia grafica giocatori: TV Broadcast (Come in Foto), Figura Realistica, Maglia 2D, Pettorine o Cerchio"
         >
-          <Shirt size={12} className={jerseyStyle === 'fullbody_3d' || jerseyStyle === 'realistic' ? 'text-amber-400' : 'text-blue-400'} />
+          {jerseyStyle === 'broadcast' ? (
+            <Sparkles size={12} className="text-yellow-400 animate-pulse" />
+          ) : (
+            <Shirt size={12} className={jerseyStyle === 'realistic' ? 'text-amber-400' : 'text-blue-400'} />
+          )}
           <span>
-            {jerseyStyle === 'fullbody_3d'
-              ? 'Figura: 3D HD (Intera)'
+            {jerseyStyle === 'broadcast'
+              ? 'TV Broadcast (Come in Foto)'
               : jerseyStyle === 'realistic'
-              ? 'Figura: Mezzo Busto'
+              ? 'Figura Realistica'
               : jerseyStyle === 'shirt'
-              ? 'Maglie: Classica'
+              ? 'Maglia 2D'
               : jerseyStyle === 'vest'
               ? 'Pettorine'
               : 'Cerchi'}

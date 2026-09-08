@@ -22,7 +22,7 @@ export type Role =
 
 export type TeamColor = 'blue' | 'red' | 'yellow' | 'green' | 'black' | 'white' | 'purple' | 'orange';
 
-export type JerseyStyle = 'fullbody_3d' | 'realistic' | 'shirt' | 'circle' | 'vest';
+export type JerseyStyle = 'broadcast' | 'realistic' | 'shirt' | 'circle' | 'vest';
 
 export interface Player {
   id: string;

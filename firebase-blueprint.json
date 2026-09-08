@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "tactics": {
+      "title": "Tactics",
+      "description": "Football coach tactical scheme and training session",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique tactic identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Name of the tactical drill or scheme"
+        },
+        "squad": {
+          "type": "array",
+          "description": "List of team squad players"
+        },
+        "players": {
+          "type": "array",
+          "description": "Positioned players on the tactical pitch"
+        },
+        "equipment": {
+          "type": "array",
+          "description": "Positioned pitch accessories such as cones, balls, ladders"
+        },
+        "drawings": {
+          "type": "array",
+          "description": "Tactical drawings, arrows, lines, and zones"
+        },
+        "drillSheet": {
+          "type": "object",
+          "description": "Coaching drill notes and instructions"
+        },
+        "animationSteps": {
+          "type": "array",
+          "description": "Multi-step animation keyframes"
+        },
+        "pitchSection": {
+          "type": "string",
+          "description": "Active pitch view section"
+        },
+        "pitchTheme": {
+          "type": "string",
+          "description": "Pitch turf theme style"
+        },
+        "jerseyStyle": {
+          "type": "string",
+          "description": "Selected jersey pattern"
+        },
+        "deviceOrigin": {
+          "type": "string",
+          "description": "User agent or device identifier"
+        }
+      },
+      "required": ["id", "title"]
+    }
+  },
+  "firestore": {
+    "/tactics/{tacticId}": {
+      "schema": "tactics",
+      "description": "Public coach tactics and drills"
+    }
+  }
+}

@@ -71,12 +71,17 @@ export async function saveTacticToCloud(
  * Load tactic directly once by ID
  */
 export async function fetchTacticFromCloud(tacticId: string): Promise<CloudTacticData | null> {
-  const docRef = doc(db, TACTICS_COLLECTION, tacticId);
-  const snap = await getDoc(docRef);
-  if (snap.exists()) {
-    return snap.data() as CloudTacticData;
+  try {
+    const docRef = doc(db, TACTICS_COLLECTION, tacticId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as CloudTacticData;
+    }
+    return null;
+  } catch (error) {
+    console.warn('Error fetching tactic from Firestore:', error);
+    return null;
   }
-  return null;
 }
 
 /**
@@ -87,20 +92,31 @@ export function subscribeToTactic(
   onUpdate: (data: CloudTacticData) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const docRef = doc(db, TACTICS_COLLECTION, tacticId);
-  const unsubscribe = onSnapshot(
-    docRef,
-    (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as CloudTacticData;
-        onUpdate(data);
+  try {
+    const docRef = doc(db, TACTICS_COLLECTION, tacticId);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        try {
+          if (docSnap.exists()) {
+            const data = docSnap.data() as CloudTacticData;
+            onUpdate(data);
+          }
+        } catch (dataErr) {
+          console.error('Error processing tactic snapshot data:', dataErr);
+        }
+      },
+      (error) => {
+        console.warn('Real-time sync error on tactic:', error);
+        if (onError) onError(error);
       }
-    },
-    (error) => {
-      console.error('Real-time sync error on tactic:', error);
-      if (onError) onError(error);
-    }
-  );
+    );
 
-  return unsubscribe;
+    return unsubscribe;
+  } catch (subErr) {
+    console.warn('Failed to attach onSnapshot listener:', subErr);
+    if (onError && subErr instanceof Error) onError(subErr);
+    return () => {};
+  }
 }
+

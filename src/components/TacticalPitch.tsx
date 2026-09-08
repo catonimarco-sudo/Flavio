@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   PlacedPlayer,
   PlacedEquipment,
@@ -36,7 +36,6 @@ interface TacticalPitchProps {
   onSelectEquipment: (eq: PlacedEquipment | null) => void;
   onSelectDrawing: (drawing: TacticalDrawing | null) => void;
   onPlayerDoubleClick?: (player: PlacedPlayer) => void;
-  onOpen3DStudio?: (player: PlacedPlayer) => void;
   onRotatePlayerQuick?: (playerId: string, deltaDeg: number) => void;
   pitchRef?: React.RefObject<SVGSVGElement | null>;
 }
@@ -65,7 +64,6 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   onSelectEquipment,
   onSelectDrawing,
   onPlayerDoubleClick,
-  onOpen3DStudio,
   onRotatePlayerQuick,
   pitchRef: externalPitchRef,
 }) => {
@@ -93,7 +91,6 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
     (e: React.MouseEvent | React.TouchEvent | React.PointerEvent | MouseEvent | TouchEvent | PointerEvent): { x: number; y: number } => {
       if (!svgRef.current) return { x: 0, y: 0 };
       const svg = svgRef.current;
-      const rect = svg.getBoundingClientRect();
 
       let clientX = 0;
       let clientY = 0;
@@ -108,14 +105,35 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         clientY = (e as MouseEvent).clientY;
       }
 
-      // Convert from screen px to SVG viewBox coordinate system
-      const x = ((clientX - rect.left) / rect.width) * PITCH_W;
-      const y = ((clientY - rect.top) / rect.height) * PITCH_H;
+      // 1. Gold standard: SVG ScreenCTM inverse matrix
+      try {
+        if (svg.getScreenCTM) {
+          const ctm = svg.getScreenCTM();
+          if (ctm) {
+            const pt = svg.createSVGPoint();
+            pt.x = clientX;
+            pt.y = clientY;
+            const svgP = pt.matrixTransform(ctm.inverse());
+            return {
+              x: Math.max(0, Math.min(PITCH_W, Math.round(svgP.x))),
+              y: Math.max(0, Math.min(PITCH_H, Math.round(svgP.y))),
+            };
+          }
+        }
+      } catch (_) {}
 
-      return {
-        x: Math.max(0, Math.min(PITCH_W, x)),
-        y: Math.max(0, Math.min(PITCH_H, y)),
-      };
+      // 2. Fallback using getBoundingClientRect
+      const rect = svg.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const x = ((clientX - rect.left) / rect.width) * PITCH_W;
+        const y = ((clientY - rect.top) / rect.height) * PITCH_H;
+        return {
+          x: Math.max(0, Math.min(PITCH_W, Math.round(x))),
+          y: Math.max(0, Math.min(PITCH_H, Math.round(y))),
+        };
+      }
+
+      return { x: 0, y: 0 };
     },
     [svgRef]
   );
@@ -232,6 +250,10 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
   // Pointer Down on Pitch Background
   const handlePitchPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    try {
+      (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    } catch (_) {}
+
     const { x, y } = getSvgCoordinates(e);
 
     // If eraser tool is selected, clicking on items erases them
@@ -241,7 +263,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
     // Drawing tools
     if (selectedTool !== 'select') {
-      const newDrawingId = `draw-${Date.now()}`;
+      const newDrawingId = `draw-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       let initialDrawing: TacticalDrawing;
 
       if (selectedTool === 'curve_arrow') {
@@ -264,7 +286,8 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             color: selectedColor,
             strokeWidth,
           };
-          onUpdateDrawings([...drawings, textDrawing]);
+          const filtered = drawings.filter((d) => d.id !== textDrawing.id);
+          onUpdateDrawings([...filtered, textDrawing]);
         }
         return;
       } else if (selectedTool === 'zone_rect') {
@@ -389,7 +412,12 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   };
 
   // Pointer Up
-  const handlePointerUp = () => {
+  const handlePointerUp = (e?: React.PointerEvent<SVGSVGElement>) => {
+    if (e && e.currentTarget) {
+      try {
+        (e.currentTarget as Element).releasePointerCapture?.(e.pointerId);
+      } catch (_) {}
+    }
     if (draggedItem) {
       setDraggedItem(null);
     }
@@ -397,17 +425,20 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
       setRotatingPlayerId(null);
     }
     if (currentDrawing) {
-      // Save drawing if valid
-      if (currentDrawing.points.length >= 2) {
-        onUpdateDrawings([...drawings, currentDrawing]);
-      }
+      const drawingToSave = currentDrawing;
       setCurrentDrawing(null);
+      // Save drawing if valid (has at least 2 points)
+      if (drawingToSave.points && drawingToSave.points.length >= 2) {
+        const filtered = drawings.filter((d) => d.id !== drawingToSave.id);
+        onUpdateDrawings([...filtered, drawingToSave]);
+      }
     }
   };
 
   // Select/Drag Player
   const handleSelectPlayer = (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => {
     e.stopPropagation();
+
     if (selectedTool === 'eraser') {
       onUpdatePlayers(players.filter((p) => p.id !== player.id));
       return;
@@ -418,6 +449,11 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
     onSelectPlayer(player);
     onSelectEquipment(null);
     onSelectDrawing(null);
+
+    // If in drawing mode, do not start dragging player coordinates
+    if (selectedTool !== 'select') {
+      return;
+    }
 
     const coords = getSvgCoordinates(e);
     setDraggedItem({
@@ -437,12 +473,18 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
   // Select/Drag Equipment
   const handleSelectEquipment = (eq: PlacedEquipment, e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
-    e.stopPropagation();
     if (selectedTool === 'eraser') {
+      e.stopPropagation();
       onUpdateEquipment(equipment.filter((item) => item.id !== eq.id));
       return;
     }
 
+    // In drawing mode, allow drawing starting from or passing equipment (ball, cone, etc.)!
+    if (selectedTool !== 'select') {
+      return;
+    }
+
+    e.stopPropagation();
     triggerHaptic();
     setSelectedId(eq.id);
     onSelectEquipment(eq);
@@ -460,11 +502,18 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
   // Select/Delete Drawing
   const handleSelectDrawing = (drawing: TacticalDrawing, e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
-    e.stopPropagation();
     if (selectedTool === 'eraser') {
+      e.stopPropagation();
       onUpdateDrawings(drawings.filter((d) => d.id !== drawing.id));
       return;
     }
+
+    // In drawing mode, do not block or select existing drawings
+    if (selectedTool !== 'select') {
+      return;
+    }
+
+    e.stopPropagation();
     triggerHaptic();
     setSelectedId(drawing.id);
     onSelectDrawing(drawing);
@@ -515,6 +564,14 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
     if (!points || points.length === 0) return null;
 
+    const itemKey = isPreview ? `preview-drawing-${id}` : `drawing-${id}`;
+    const markerSuffix = isPreview ? `preview-${id}` : id;
+
+    const isInteractive = !isPreview && (selectedTool === 'select' || selectedTool === 'eraser');
+    const interactiveProps = isInteractive
+      ? { onPointerDown: (e: React.PointerEvent) => handleSelectDrawing(drawing, e), className: 'cursor-pointer' }
+      : { className: 'pointer-events-none' };
+
     const start = points[0];
     const end = points[points.length - 1] || start;
 
@@ -522,14 +579,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
       case 'pass_arrow': {
         return (
           <g
-            key={id}
-            id={`drawing-${id}`}
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer group"
+            key={itemKey}
+            id={`drawing-${itemKey}`}
+            {...interactiveProps}
           >
             <defs>
               <marker
-                id={`arrow-head-${id}`}
+                id={`arrow-head-${markerSuffix}`}
                 viewBox="0 0 10 10"
                 refX="7"
                 refY="5"
@@ -547,7 +603,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
               y2={end.y}
               stroke={color}
               strokeWidth={width}
-              markerEnd={`url(#arrow-head-${id})`}
+              markerEnd={`url(#arrow-head-${markerSuffix})`}
               strokeLinecap="round"
             />
             {isSelected && (
@@ -568,14 +624,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
       case 'run_arrow': {
         return (
           <g
-            key={id}
-            id={`drawing-${id}`}
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer"
+            key={itemKey}
+            id={`drawing-${itemKey}`}
+            {...interactiveProps}
           >
             <defs>
               <marker
-                id={`arrow-head-run-${id}`}
+                id={`arrow-head-run-${markerSuffix}`}
                 viewBox="0 0 10 10"
                 refX="7"
                 refY="5"
@@ -594,7 +649,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
               stroke={color}
               strokeWidth={width}
               strokeDasharray={strokeDash || '6,6'}
-              markerEnd={`url(#arrow-head-run-${id})`}
+              markerEnd={`url(#arrow-head-run-${markerSuffix})`}
               strokeLinecap="round"
             />
           </g>
@@ -605,14 +660,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         const cp = controlPoint || { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 30 };
         return (
           <g
-            key={id}
-            id={`drawing-${id}`}
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer"
+            key={itemKey}
+            id={`drawing-${itemKey}`}
+            {...interactiveProps}
           >
             <defs>
               <marker
-                id={`arrow-head-curve-${id}`}
+                id={`arrow-head-curve-${markerSuffix}`}
                 viewBox="0 0 10 10"
                 refX="7"
                 refY="5"
@@ -628,7 +682,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
               fill="none"
               stroke={color}
               strokeWidth={width}
-              markerEnd={`url(#arrow-head-curve-${id})`}
+              markerEnd={`url(#arrow-head-curve-${markerSuffix})`}
               strokeLinecap="round"
             />
             {/* Draggable control point handle when selected */}
@@ -686,10 +740,10 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         }
 
         return (
-          <g key={id} id={`drawing-${id}`} onPointerDown={(e) => handleSelectDrawing(drawing, e)}>
+          <g key={itemKey} id={`drawing-${itemKey}`} {...interactiveProps}>
             <defs>
               <marker
-                id={`arrow-head-dribble-${id}`}
+                id={`arrow-head-dribble-${markerSuffix}`}
                 viewBox="0 0 10 10"
                 refX="7"
                 refY="5"
@@ -705,7 +759,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
               fill="none"
               stroke={color}
               strokeWidth={width}
-              markerEnd={`url(#arrow-head-dribble-${id})`}
+              markerEnd={`url(#arrow-head-dribble-${markerSuffix})`}
               strokeLinecap="round"
             />
           </g>
@@ -732,10 +786,10 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         zigZag += ` L ${end.x} ${end.y}`;
 
         return (
-          <g key={id} id={`drawing-${id}`} onPointerDown={(e) => handleSelectDrawing(drawing, e)}>
+          <g key={itemKey} id={`drawing-${itemKey}`} {...interactiveProps}>
             <defs>
               <marker
-                id={`arrow-head-press-${id}`}
+                id={`arrow-head-press-${markerSuffix}`}
                 viewBox="0 0 10 10"
                 refX="7"
                 refY="5"
@@ -751,7 +805,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
               fill="none"
               stroke={color}
               strokeWidth={width}
-              markerEnd={`url(#arrow-head-press-${id})`}
+              markerEnd={`url(#arrow-head-press-${markerSuffix})`}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -762,8 +816,8 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
       case 'line': {
         return (
           <line
-            key={id}
-            id={`drawing-${id}`}
+            key={itemKey}
+            id={`drawing-${itemKey}`}
             x1={start.x}
             y1={start.y}
             x2={end.x}
@@ -771,8 +825,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             stroke={color}
             strokeWidth={width}
             strokeLinecap="round"
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer"
+            {...interactiveProps}
           />
         );
       }
@@ -781,16 +834,15 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         const pathData = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
         return (
           <path
-            key={id}
-            id={`drawing-${id}`}
+            key={itemKey}
+            id={`drawing-${itemKey}`}
             d={pathData}
             fill="none"
             stroke={color}
             strokeWidth={width}
             strokeLinecap="round"
             strokeLinejoin="round"
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer"
+            {...interactiveProps}
           />
         );
       }
@@ -802,8 +854,8 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         const heightRect = Math.abs(end.y - start.y);
         return (
           <rect
-            key={id}
-            id={`drawing-${id}`}
+            key={itemKey}
+            id={`drawing-${itemKey}`}
             x={minX}
             y={minY}
             width={widthRect}
@@ -813,8 +865,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             strokeWidth={width}
             strokeDasharray="4 3"
             rx="4"
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer"
+            {...interactiveProps}
           />
         );
       }
@@ -826,8 +877,8 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         const ry = Math.abs(end.y - start.y) / 2;
         return (
           <ellipse
-            key={id}
-            id={`drawing-${id}`}
+            key={itemKey}
+            id={`drawing-${itemKey}`}
             cx={cx}
             cy={cy}
             rx={Math.max(5, rx)}
@@ -836,8 +887,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             stroke={color}
             strokeWidth={width}
             strokeDasharray="4 3"
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-pointer"
+            {...interactiveProps}
           />
         );
       }
@@ -845,11 +895,10 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
       case 'text': {
         return (
           <g
-            key={id}
-            id={`drawing-${id}`}
+            key={itemKey}
+            id={`drawing-${itemKey}`}
             transform={`translate(${start.x}, ${start.y})`}
-            onPointerDown={(e) => handleSelectDrawing(drawing, e)}
-            className="cursor-move select-none"
+            {...interactiveProps}
           >
             <rect
               x="-6"
@@ -921,6 +970,43 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   };
 
   const themeColors = getPitchColors();
+
+  // Strictly deduplicate lists before rendering SVG elements to avoid any key collision
+  const uniqueDrawings = useMemo(() => {
+    const seen = new Set<string>();
+    const res: TacticalDrawing[] = [];
+    for (const d of drawings) {
+      if (d && d.id && !seen.has(d.id)) {
+        seen.add(d.id);
+        res.push(d);
+      }
+    }
+    return res;
+  }, [drawings]);
+
+  const uniqueEquipment = useMemo(() => {
+    const seen = new Set<string>();
+    const res: PlacedEquipment[] = [];
+    for (const eq of equipment) {
+      if (eq && eq.id && !seen.has(eq.id)) {
+        seen.add(eq.id);
+        res.push(eq);
+      }
+    }
+    return res;
+  }, [equipment]);
+
+  const uniquePlayers = useMemo(() => {
+    const seen = new Set<string>();
+    const res: PlacedPlayer[] = [];
+    for (const p of players) {
+      if (p && p.id && !seen.has(p.id)) {
+        seen.add(p.id);
+        res.push(p);
+      }
+    }
+    return res;
+  }, [players]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-[#03150d] p-0 m-0 touch-none">
@@ -1039,13 +1125,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         {renderDepartmentLines()}
 
         {/* --- 5. Completed Tactical Drawings --- */}
-        {drawings.map((drawing) => renderDrawingItem(drawing))}
+        {uniqueDrawings.map((drawing) => renderDrawingItem(drawing))}
 
         {/* --- 6. Active Drawing Preview (in-progress) --- */}
         {currentDrawing && renderDrawingItem(currentDrawing, true)}
 
         {/* --- 7. Placed Equipment Items --- */}
-        {equipment.map((eq) => {
+        {uniqueEquipment.map((eq) => {
           const isSelected = selectedId === eq.id;
           const isDragging = draggedItem?.type === 'equipment' && draggedItem?.id === eq.id;
           return (
@@ -1110,7 +1196,7 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         })}
 
         {/* --- 8. Placed Players --- */}
-        {players.map((player) => (
+        {uniquePlayers.map((player) => (
           <PlayerPitchNode
             key={player.id}
             player={player}
@@ -1136,7 +1222,6 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
                 onUpdatePlayers(updated);
               }
             }}
-            onOpen3DStudio={onOpen3DStudio}
             onDoubleClick={onPlayerDoubleClick}
           />
         ))}
