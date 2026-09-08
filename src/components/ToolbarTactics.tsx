@@ -34,6 +34,9 @@ interface ToolbarTacticsProps {
   onUndo: () => void;
   onRedo: () => void;
   onClearAll: (type?: 'all' | 'drawings' | 'equipment' | 'opponents') => void;
+  hasSelectedItem?: boolean;
+  selectedItemLabel?: string | null;
+  onDeleteSelected?: () => void;
 }
 
 const COLORS = [
@@ -68,6 +71,9 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
   onUndo,
   onRedo,
   onClearAll,
+  hasSelectedItem,
+  selectedItemLabel,
+  onDeleteSelected,
 }) => {
   const [showClearMenu, setShowClearMenu] = useState(false);
 
@@ -244,14 +250,15 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         <button
           id="tool-eraser"
           onClick={() => onSelectTool('eraser')}
-          className={`p-1 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
+          className={`flex items-center gap-1 p-1 px-1.5 rounded text-[10px] sm:text-[11px] font-medium transition-colors ${
             selectedTool === 'eraser'
-              ? 'bg-rose-600 text-white'
+              ? 'bg-rose-600 text-white ring-1 ring-rose-400'
               : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/40'
           }`}
-          title="Gomma per cancellare singoli elementi"
+          title="Gomma: tocca qualsiasi singolo giocatore, attrezzo o disegno per eliminarlo"
         >
           <Eraser size={12} />
+          <span className="hidden sm:inline text-[10px]">Gomma</span>
         </button>
 
         <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
@@ -275,6 +282,19 @@ export const ToolbarTactics: React.FC<ToolbarTacticsProps> = ({
         >
           <Redo2 size={12} />
         </button>
+
+        {/* Pulsante dedicato: Elimina singolo oggetto selezionato */}
+        {hasSelectedItem && onDeleteSelected && (
+          <button
+            id="btn-delete-selected"
+            onClick={onDeleteSelected}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] sm:text-[11px] font-bold transition-all shadow-md active:scale-95 animate-in fade-in"
+            title={`Elimina singolo ${selectedItemLabel || 'oggetto selezionato'} (oppure premi Canc)`}
+          >
+            <Trash2 size={12} className="shrink-0" />
+            <span>Elimina {selectedItemLabel || 'Oggetto'}</span>
+          </button>
+        )}
 
         {/* Svuota Tutto Dropdown */}
         <div className="relative">

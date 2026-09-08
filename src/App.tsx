@@ -29,7 +29,7 @@ import { PresetsModal } from './components/PresetsModal';
 import { ExportModal } from './components/ExportModal';
 import { PlayerEditPopover } from './components/PlayerEditPopover';
 import { AnimationControls } from './components/AnimationControls';
-import { X, Sparkles, Layers, Eye } from 'lucide-react';
+import { X, Sparkles, Layers, Eye, Trash2, RotateCw, Copy, Settings } from 'lucide-react';
 import { CloudSyncStatus } from './components/Header';
 import {
   saveTacticToCloud,
@@ -38,6 +38,40 @@ import {
   generateTacticId,
   CloudTacticData,
 } from './services/tacticsCloud';
+
+const getEquipmentInfo = (type: EquipmentType) => {
+  switch (type) {
+    case 'ball': return { name: 'Pallone', icon: '⚽' };
+    case 'cone_orange': return { name: 'Cono Arancione', icon: '🔺' };
+    case 'disc_yellow': return { name: 'Cinesino Giallo', icon: '🟡' };
+    case 'disc_red': return { name: 'Cinesino Rosso', icon: '🔴' };
+    case 'disc_blue': return { name: 'Cinesino Blu', icon: '🔵' };
+    case 'disc_green': return { name: 'Cinesino Verde', icon: '🟢' };
+    case 'mini_goal': return { name: 'Porticina', icon: '🥅' };
+    case 'pole': return { name: 'Paletto Slalom', icon: '🦯' };
+    case 'ladder': return { name: 'Scaletta Agilità', icon: '🪜' };
+    case 'mannequin': return { name: 'Sagoma Barriera', icon: '🧍' };
+    case 'hurdle': return { name: 'Ostacolo Basso', icon: '🚧' };
+    case 'ring': return { name: 'Cerchio Coordinativo', icon: '⭕' };
+    default: return { name: 'Attrezzo', icon: '📦' };
+  }
+};
+
+const getDrawingInfo = (type: ToolType) => {
+  switch (type) {
+    case 'pass_arrow': return { name: 'Freccia Passaggio', icon: '➡️' };
+    case 'run_arrow': return { name: 'Corsa Tratteggiata', icon: '〰️' };
+    case 'dribble_arrow': return { name: 'Dribbling / Conduzione', icon: '⚡' };
+    case 'curve_arrow': return { name: 'Traiettoria Curva', icon: '⤴️' };
+    case 'press_arrow': return { name: 'Pressing Aggressivo', icon: '🔥' };
+    case 'line': return { name: 'Linea Tattica', icon: '📏' };
+    case 'freehand': return { name: 'Schizzo a Mano Libera', icon: '✏️' };
+    case 'zone_rect': return { name: 'Zona Rettangolare', icon: '🔲' };
+    case 'zone_circle': return { name: 'Zona Circolare', icon: '⚪' };
+    case 'text': return { name: 'Etichetta Testo', icon: '📝' };
+    default: return { name: 'Disegno', icon: '✏️' };
+  }
+};
 
 const STORAGE_KEY = 'mister_tactics_state_v1';
 
@@ -213,8 +247,9 @@ export default function App() {
   const [showSquadSidebar, setShowSquadSidebar] = useState<boolean>(false);
   const [showSessionSidebar, setShowSessionSidebar] = useState<boolean>(false);
 
-  // Selected Pitch Node for edit popover
+  // Selected Pitch Node
   const [selectedPlayer, setSelectedPlayer] = useState<PlacedPlayer | null>(null);
+  const [editingPlayer, setEditingPlayer] = useState<PlacedPlayer | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<PlacedEquipment | null>(null);
   const [selectedDrawing, setSelectedDrawing] = useState<TacticalDrawing | null>(null);
 
@@ -593,6 +628,63 @@ export default function App() {
     }
   };
 
+  // Delete individual items with history
+  const handleDeletePlayer = (id: string) => {
+    recordHistory();
+    updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
+    if (selectedPlayer?.id === id) setSelectedPlayer(null);
+    if (editingPlayer?.id === id) setEditingPlayer(null);
+  };
+
+  const handleDeleteEquipment = (id: string) => {
+    recordHistory();
+    updateEquipmentWithStep((prev) => prev.filter((e) => e.id !== id));
+    if (selectedEquipment?.id === id) setSelectedEquipment(null);
+  };
+
+  const handleDeleteDrawing = (id: string) => {
+    recordHistory();
+    updateDrawingsWithStep((prev) => prev.filter((d) => d.id !== id));
+    if (selectedDrawing?.id === id) setSelectedDrawing(null);
+  };
+
+  const handleDeleteSelectedObject = () => {
+    if (selectedPlayer) {
+      handleDeletePlayer(selectedPlayer.id);
+    } else if (selectedEquipment) {
+      handleDeleteEquipment(selectedEquipment.id);
+    } else if (selectedDrawing) {
+      handleDeleteDrawing(selectedDrawing.id);
+    }
+  };
+
+  const handleDuplicateEquipment = (eq: PlacedEquipment) => {
+    recordHistory();
+    const copy: PlacedEquipment = {
+      ...eq,
+      id: `eq-${Date.now()}`,
+      x: Math.min(1000, eq.x + 30),
+      y: Math.min(640, eq.y + 30),
+    };
+    updateEquipmentWithStep((prev) => [...prev, copy]);
+    setSelectedEquipment(copy);
+  };
+
+  const handleRotateEquipment = (id: string, deltaDeg = 45) => {
+    recordHistory();
+    updateEquipmentWithStep((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const nextRot = (((item.rotation || 0) + deltaDeg) % 360 + 360) % 360;
+        return { ...item, rotation: nextRot };
+      })
+    );
+    if (selectedEquipment && selectedEquipment.id === id) {
+      const nextRot = (((selectedEquipment.rotation || 0) + deltaDeg) % 360 + 360) % 360;
+      setSelectedEquipment({ ...selectedEquipment, rotation: nextRot });
+    }
+  };
+
   // Add Equipment to pitch center
   const handleAddEquipment = (type: EquipmentType) => {
     recordHistory();
@@ -820,8 +912,42 @@ export default function App() {
     };
   }, [isPlayingAnimation, animationSteps, animationSpeed]);
 
+  // Keyboard shortcut: Delete / Backspace removes currently selected item
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const target = e.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable)
+        ) {
+          return;
+        }
+
+        if (selectedPlayer || selectedEquipment || selectedDrawing) {
+          e.preventDefault();
+          handleDeleteSelectedObject();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPlayer, selectedEquipment, selectedDrawing, players, equipment, drawings]);
+
+  // Compute label for currently selected element
+  const selectedItemLabel = selectedPlayer
+    ? `Giocatore ${selectedPlayer.name} #${selectedPlayer.number}`
+    : selectedEquipment
+    ? getEquipmentInfo(selectedEquipment.type).name
+    : selectedDrawing
+    ? getDrawingInfo(selectedDrawing.type).name
+    : null;
+
   return (
-    <div className="flex flex-col min-h-screen w-full bg-slate-950 text-slate-200 font-sans overflow-x-hidden overflow-y-auto">
+    <div className="flex flex-col min-h-screen w-full bg-slate-950 text-slate-200 font-sans overflow-x-hidden">
       {/* 1. Header with brand, tactic title & main action buttons */}
       <Header
         tacticTitle={tacticTitle}
@@ -1026,16 +1152,116 @@ export default function App() {
 
       {/* 2. IL CAMPO DA GIOCO (PITCH WORKSPACE) - POSIZIONATO IN ALTO / SOPRA A TUTTO */}
       <section className="w-full max-w-6xl mx-auto px-2 sm:px-4 pt-2 sm:pt-3 pb-1 shrink-0 flex flex-col">
-        {/* Pitch Bar with Technical Counters */}
+        {/* Pitch Bar with Technical Counters & Selected Object Actions */}
         <div className="flex flex-wrap items-center justify-between px-2 sm:px-3 py-1.5 bg-slate-900/90 rounded-t-xl border border-slate-800 text-[10px] sm:text-xs font-mono text-slate-400 select-none gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950 border border-slate-800 text-xs font-bold text-white">
               <Layers size={13} className="text-emerald-400" />
               <span>Lavagna Tattica 2D</span>
             </div>
 
-            <span className="text-slate-700 hidden sm:inline">•</span>
-            <span className="hidden sm:inline text-emerald-400 font-bold text-[10px]">// CAMPO TATTICO DIGITALE</span>
+            {/* Active Selected Player Actions */}
+            {selectedPlayer && (
+              <div className="flex items-center gap-1.5 bg-blue-950/95 border border-blue-500/70 px-2 py-1 rounded-md text-[11px] text-blue-100 shadow-md animate-in fade-in">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="font-semibold text-white truncate max-w-[90px] sm:max-w-[130px]">{selectedPlayer.name}</span>
+                <span className="font-mono text-cyan-300 text-[10px]">#{selectedPlayer.number} ({selectedPlayer.role})</span>
+                <button
+                  type="button"
+                  onClick={() => setEditingPlayer(selectedPlayer)}
+                  className="px-1.5 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-semibold transition-colors shadow-xs cursor-pointer flex items-center gap-1"
+                  title="Apri scheda per modificare nome, numero, maglia e ruolo"
+                >
+                  <Settings size={10} />
+                  <span>Scheda</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePlayer(selectedPlayer.id)}
+                  className="px-1.5 py-0.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold transition-colors shadow-xs cursor-pointer flex items-center gap-1"
+                  title="Elimina questo singolo giocatore (oppure premi Canc)"
+                >
+                  <Trash2 size={10} />
+                  <span>Elimina</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlayer(null)}
+                  className="p-0.5 text-slate-400 hover:text-white rounded"
+                  title="Deseleziona"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* Active Selected Equipment Actions */}
+            {selectedEquipment && (
+              <div className="flex items-center gap-1.5 bg-amber-950/95 border border-amber-500/70 px-2 py-1 rounded-md text-[11px] text-amber-100 shadow-md animate-in fade-in">
+                <span className="text-sm">{getEquipmentInfo(selectedEquipment.type).icon}</span>
+                <span className="font-semibold text-white">{getEquipmentInfo(selectedEquipment.type).name}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRotateEquipment(selectedEquipment.id, 45)}
+                  className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded text-[10px] font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                  title="Ruota attrezzo (+45°)"
+                >
+                  <RotateCw size={10} />
+                  <span>Ruota</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDuplicateEquipment(selectedEquipment)}
+                  className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded text-[10px] font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                  title="Duplica attrezzo"
+                >
+                  <Copy size={10} />
+                  <span>Duplica</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteEquipment(selectedEquipment.id)}
+                  className="px-1.5 py-0.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold transition-colors shadow-xs cursor-pointer flex items-center gap-1"
+                  title="Elimina questo singolo attrezzo (oppure premi Canc)"
+                >
+                  <Trash2 size={10} />
+                  <span>Elimina</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEquipment(null)}
+                  className="p-0.5 text-slate-400 hover:text-white rounded"
+                  title="Deseleziona"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* Active Selected Drawing Actions */}
+            {selectedDrawing && (
+              <div className="flex items-center gap-1.5 bg-purple-950/95 border border-purple-500/70 px-2 py-1 rounded-md text-[11px] text-purple-100 shadow-md animate-in fade-in">
+                <span className="text-sm">{getDrawingInfo(selectedDrawing.type).icon}</span>
+                <span className="font-semibold text-white">{getDrawingInfo(selectedDrawing.type).name}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteDrawing(selectedDrawing.id)}
+                  className="px-1.5 py-0.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold transition-colors shadow-xs cursor-pointer flex items-center gap-1"
+                  title="Elimina questo singolo elemento grafico (oppure premi Canc)"
+                >
+                  <Trash2 size={10} />
+                  <span>Elimina</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDrawing(null)}
+                  className="p-0.5 text-slate-400 hover:text-white rounded"
+                  title="Deseleziona"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-[10px]">
@@ -1053,7 +1279,7 @@ export default function App() {
 
         {/* Pitch Area Container - Edge-to-edge responsiveness on mobile/iPad/PC */}
         <div className="relative w-full rounded-b-xl border-x border-b border-slate-800 overflow-hidden shadow-2xl bg-slate-950 flex items-center justify-center">
-          <div className="w-full aspect-[1050/680] max-h-[75vh] flex items-center justify-center">
+          <div className="w-full aspect-[1050/680] max-h-[75vh] landscape:max-h-[66vh] flex items-center justify-center">
             <TacticalPitch
               pitchRef={pitchSvgRef}
               players={players}
@@ -1085,9 +1311,19 @@ export default function App() {
                 updateDrawingsWithStep(updated);
               }}
               onSelectPlayer={(p) => setSelectedPlayer(p)}
+              onOpenPlayerEdit={(p) => {
+                setSelectedPlayer(p);
+                setEditingPlayer(p);
+              }}
               onSelectEquipment={(eq) => setSelectedEquipment(eq)}
               onSelectDrawing={(d) => setSelectedDrawing(d)}
-              onPlayerDoubleClick={(p) => setSelectedPlayer(p)}
+              onDeletePlayer={handleDeletePlayer}
+              onDeleteEquipment={handleDeleteEquipment}
+              onDeleteDrawing={handleDeleteDrawing}
+              onPlayerDoubleClick={(p) => {
+                setSelectedPlayer(p);
+                setEditingPlayer(p);
+              }}
               onRotatePlayerQuick={(id, delta) => {
                 recordHistory();
                 updatePlayersWithStep((prev) =>
@@ -1100,6 +1336,10 @@ export default function App() {
                 if (selectedPlayer && selectedPlayer.id === id) {
                   const newRot = (((selectedPlayer.rotation || 0) + delta) % 360 + 360) % 360;
                   setSelectedPlayer({ ...selectedPlayer, rotation: Math.round(newRot) });
+                }
+                if (editingPlayer && editingPlayer.id === id) {
+                  const newRot = (((editingPlayer.rotation || 0) + delta) % 360 + 360) % 360;
+                  setEditingPlayer({ ...editingPlayer, rotation: Math.round(newRot) });
                 }
               }}
             />
@@ -1143,6 +1383,9 @@ export default function App() {
             onUndo={handleUndo}
             onRedo={handleRedo}
             onClearAll={handleClearAll}
+            hasSelectedItem={!!(selectedPlayer || selectedEquipment || selectedDrawing)}
+            selectedItemLabel={selectedItemLabel}
+            onDeleteSelected={handleDeleteSelectedObject}
           />
         </div>
 
@@ -1238,26 +1481,60 @@ export default function App() {
         onImportData={handleImportData}
       />
 
+      {/* Quick Scroll Helper for Landscape Mobile on iPhone */}
+      <div className="fixed bottom-3 right-3 z-40 hidden landscape:flex sm:landscape:hidden items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 backdrop-blur text-slate-200 text-xs px-2.5 py-1.5 rounded-full shadow-lg">
+        <button
+          type="button"
+          onClick={() => {
+            window.scrollBy({ top: 260, behavior: 'smooth' });
+          }}
+          className="flex items-center gap-1 hover:text-white cursor-pointer"
+        >
+          <span>Strumenti</span>
+          <span className="text-blue-400 font-bold">↓</span>
+        </button>
+        <span className="text-slate-600">|</span>
+        <button
+          type="button"
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="flex items-center gap-1 hover:text-white cursor-pointer"
+        >
+          <span>Campo</span>
+          <span className="text-emerald-400 font-bold">↑</span>
+        </button>
+      </div>
+
       {/* Floating Comprehensive Player & Jersey Customization Popover */}
-      {selectedPlayer && (
+      {editingPlayer && (
         <PlayerEditPopover
-          player={selectedPlayer}
-          onClose={() => setSelectedPlayer(null)}
+          player={editingPlayer}
+          onClose={() => setEditingPlayer(null)}
           onUpdatePlayer={(updated) => {
             recordHistory();
             updatePlayersWithStep((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-            setSelectedPlayer(updated);
+            setEditingPlayer(updated);
+            if (selectedPlayer && selectedPlayer.id === updated.id) {
+              setSelectedPlayer(updated);
+            }
           }}
           onRemovePlayer={(id) => {
             recordHistory();
             updatePlayersWithStep((prev) => prev.filter((p) => p.id !== id));
-            setSelectedPlayer(null);
+            setEditingPlayer(null);
+            if (selectedPlayer && selectedPlayer.id === id) {
+              setSelectedPlayer(null);
+            }
           }}
           onApplyJerseyToTeam={(team, jerseyUrl) => {
             recordHistory();
             updatePlayersWithStep((prev) =>
               prev.map((p) => (p.team === team ? { ...p, jerseyImageUrl: jerseyUrl } : p))
             );
+            if (editingPlayer && editingPlayer.team === team) {
+              setEditingPlayer({ ...editingPlayer, jerseyImageUrl: jerseyUrl });
+            }
             if (selectedPlayer && selectedPlayer.team === team) {
               setSelectedPlayer({ ...selectedPlayer, jerseyImageUrl: jerseyUrl });
             }
@@ -1275,6 +1552,13 @@ export default function App() {
                   : p
               )
             );
+            if (editingPlayer && editingPlayer.team === team) {
+              setEditingPlayer({
+                ...editingPlayer,
+                customColor: color,
+                ...(secondaryColor ? { secondaryColor } : {}),
+              });
+            }
             if (selectedPlayer && selectedPlayer.team === team) {
               setSelectedPlayer({
                 ...selectedPlayer,

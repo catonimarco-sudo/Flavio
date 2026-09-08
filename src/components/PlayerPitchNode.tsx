@@ -15,6 +15,7 @@ interface PlayerPitchNodeProps {
   onSelect: (player: PlacedPlayer, e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => void;
   onStartRotate?: (playerId: string, e: React.PointerEvent | React.TouchEvent) => void;
   onRotateQuick?: (playerId: string, deltaDeg: number) => void;
+  onDeletePlayer?: (playerId: string) => void;
   onDoubleClick?: (player: PlacedPlayer) => void;
 }
 
@@ -31,6 +32,7 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
   onSelect,
   onStartRotate,
   onRotateQuick,
+  onDeletePlayer,
   onDoubleClick,
 }) => {
   const { team, role, number, name, photoUrl, rotation = 0 } = player;
@@ -168,6 +170,8 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
   const collarId = `collar-grad-${player.id}`;
   const skinGradId = `skin-grad-${player.id}`;
 
+  const lastTapTimeRef = React.useRef<number>(0);
+
   return (
     <g
       id={`player-node-${player.id}`}
@@ -177,11 +181,17 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
       }`}
       onPointerDown={(e) => {
         e.stopPropagation();
+        const now = Date.now();
+        if (now - lastTapTimeRef.current < 320) {
+          onDoubleClick?.(player);
+          lastTapTimeRef.current = 0;
+        } else {
+          lastTapTimeRef.current = now;
+        }
         onSelect(player, e);
       }}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(player, e);
       }}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -404,6 +414,23 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
             <rect x="-12" y="-8.5" width="24" height="17" rx="4" fill="#0b1120" stroke="#38bdf8" strokeWidth="1.2" />
             <text x="0" y="3.8" textAnchor="middle" fontSize="10.5" fill="#38bdf8" fontWeight="bold">▶</text>
           </g>
+
+          {/* Quick Delete Player Button (Cestino) */}
+          {onDeletePlayer && (
+            <g
+              id={`btn-delete-player-${player.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePlayer(player.id);
+              }}
+              transform="translate(60, 0)"
+              className="hover:scale-115 active:scale-95 transition-transform"
+              title="Elimina questo singolo giocatore"
+            >
+              <rect x="-12" y="-8.5" width="24" height="17" rx="4" fill="#450a0a" stroke="#ef4444" strokeWidth="1.2" />
+              <text x="0" y="3.8" textAnchor="middle" fontSize="10" fill="#fca5a5" fontWeight="bold">✕</text>
+            </g>
+          )}
         </g>
       )}
 

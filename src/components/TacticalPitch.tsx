@@ -35,7 +35,11 @@ interface TacticalPitchProps {
   onSelectPlayer: (player: PlacedPlayer | null) => void;
   onSelectEquipment: (eq: PlacedEquipment | null) => void;
   onSelectDrawing: (drawing: TacticalDrawing | null) => void;
+  onDeletePlayer?: (playerId: string) => void;
+  onDeleteEquipment?: (equipmentId: string) => void;
+  onDeleteDrawing?: (drawingId: string) => void;
   onPlayerDoubleClick?: (player: PlacedPlayer) => void;
+  onOpenPlayerEdit?: (player: PlacedPlayer) => void;
   onRotatePlayerQuick?: (playerId: string, deltaDeg: number) => void;
   pitchRef?: React.RefObject<SVGSVGElement | null>;
 }
@@ -63,12 +67,29 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   onSelectPlayer,
   onSelectEquipment,
   onSelectDrawing,
+  onDeletePlayer,
+  onDeleteEquipment,
+  onDeleteDrawing,
   onPlayerDoubleClick,
+  onOpenPlayerEdit,
   onRotatePlayerQuick,
   pitchRef: externalPitchRef,
 }) => {
   const internalPitchRef = useRef<SVGSVGElement | null>(null);
   const svgRef = externalPitchRef || internalPitchRef;
+
+  // Player tap/drag tracking ref to distinguish between:
+  // 1. First click/tap -> select player (does NOT open edit sheet in 'sposta' mode)
+  // 2. Dragging player -> move player across pitch (does NOT open edit sheet)
+  // 3. Second click/tap on already selected player -> open player edit sheet!
+  const playerInteractionRef = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    startTime: number;
+    wasAlreadySelected: boolean;
+    hasMoved: boolean;
+  } | null>(null);
 
   // Active interaction states
   const [draggedItem, setDraggedItem] = useState<{
@@ -250,9 +271,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
   // Pointer Down on Pitch Background
   const handlePitchPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    try {
-      (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-    } catch (_) {}
+    // Only capture pointer when actively drawing with a drawing tool!
+    // In 'select' (sposta) mode, do NOT capture pointer on empty pitch, so browser pan-y scrolling works!
+    if (selectedTool !== 'select' && selectedTool !== 'eraser') {
+      try {
+        (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+      } catch (_) {}
+    }
 
     const { x, y } = getSvgCoordinates(e);
 
@@ -351,6 +376,12 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
     // If dragging a player
     if (draggedItem?.type === 'player') {
+      if (playerInteractionRef.current && playerInteractionRef.current.id === draggedItem.id) {
+        const dist = Math.hypot(x - playerInteractionRef.current.startX, y - playerInteractionRef.current.startY);
+        if (dist > 6) {
+          playerInteractionRef.current.hasMoved = true;
+        }
+      }
       const newX = Math.round(x - draggedItem.offsetX);
       const newY = Math.round(y - draggedItem.offsetY);
       onUpdatePlayers(
@@ -433,6 +464,23 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         onUpdateDrawings([...filtered, drawingToSave]);
       }
     }
+
+    if (playerInteractionRef.current) {
+      const { id, wasAlreadySelected, hasMoved, startTime } = playerInteractionRef.current;
+      const elapsed = Date.now() - startTime;
+      playerInteractionRef.current = null;
+
+      // In 'select' (sposta) mode:
+      // If user performed a clean click/tap (did NOT drag, and quick tap < 450ms)
+      // and the player was ALREADY selected prior to this tap:
+      // This is the 2nd click on the player -> open the edit sheet!
+      if (selectedTool === 'select' && !hasMoved && elapsed < 450 && wasAlreadySelected) {
+        const targetPlayer = players.find((p) => p.id === id);
+        if (targetPlayer && onOpenPlayerEdit) {
+          onOpenPlayerEdit(targetPlayer);
+        }
+      }
+    }
   };
 
   // Select/Drag Player
@@ -440,9 +488,28 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
     e.stopPropagation();
 
     if (selectedTool === 'eraser') {
-      onUpdatePlayers(players.filter((p) => p.id !== player.id));
+      triggerHaptic();
+      if (onDeletePlayer) {
+        onDeletePlayer(player.id);
+      } else {
+        onUpdatePlayers(players.filter((p) => p.id !== player.id));
+      }
+      setSelectedId(null);
+      onSelectPlayer(null);
       return;
     }
+
+    const wasAlreadySelected = selectedId === player.id;
+    const coords = getSvgCoordinates(e);
+
+    playerInteractionRef.current = {
+      id: player.id,
+      startX: coords.x,
+      startY: coords.y,
+      startTime: Date.now(),
+      wasAlreadySelected,
+      hasMoved: false,
+    };
 
     triggerHaptic();
     setSelectedId(player.id);
@@ -455,7 +522,6 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
       return;
     }
 
-    const coords = getSvgCoordinates(e);
     setDraggedItem({
       type: 'player',
       id: player.id,
@@ -475,7 +541,14 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   const handleSelectEquipment = (eq: PlacedEquipment, e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
     if (selectedTool === 'eraser') {
       e.stopPropagation();
-      onUpdateEquipment(equipment.filter((item) => item.id !== eq.id));
+      triggerHaptic();
+      if (onDeleteEquipment) {
+        onDeleteEquipment(eq.id);
+      } else {
+        onUpdateEquipment(equipment.filter((item) => item.id !== eq.id));
+      }
+      setSelectedId(null);
+      onSelectEquipment(null);
       return;
     }
 
@@ -504,7 +577,14 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
   const handleSelectDrawing = (drawing: TacticalDrawing, e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
     if (selectedTool === 'eraser') {
       e.stopPropagation();
-      onUpdateDrawings(drawings.filter((d) => d.id !== drawing.id));
+      triggerHaptic();
+      if (onDeleteDrawing) {
+        onDeleteDrawing(drawing.id);
+      } else {
+        onUpdateDrawings(drawings.filter((d) => d.id !== drawing.id));
+      }
+      setSelectedId(null);
+      onSelectDrawing(null);
       return;
     }
 
@@ -574,8 +654,12 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
     const start = points[0];
     const end = points[points.length - 1] || start;
+    const midPoint = points.length > 1
+      ? { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
+      : start;
 
-    switch (type) {
+    const renderContent = () => {
+      switch (type) {
       case 'pass_arrow': {
         return (
           <g
@@ -930,6 +1014,44 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
     }
   };
 
+  const content = renderContent();
+  if (!content) return null;
+
+  if (isSelected && !isPreview) {
+    return (
+      <g key={`wrapper-${itemKey}`} id={`drawing-wrapper-${id}`}>
+        {content}
+        {/* Quick Delete Badge for Selected Drawing */}
+        <g
+          id={`delete-btn-drawing-${id}`}
+          transform={`translate(${midPoint.x}, ${midPoint.y})`}
+          className="cursor-pointer pointer-events-auto select-none transition-transform hover:scale-125"
+          onClick={(e) => {
+            e.stopPropagation();
+            triggerHaptic();
+            if (onDeleteDrawing) {
+              onDeleteDrawing(id);
+            } else {
+              onUpdateDrawings(drawings.filter((d) => d.id !== id));
+            }
+            setSelectedId(null);
+            onSelectDrawing(null);
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          title="Elimina questo singolo elemento grafico"
+        >
+          <circle cx="0" cy="0" r="11" fill="#ef4444" stroke="#ffffff" strokeWidth="1.5" className="filter drop-shadow-md" />
+          <path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" />
+        </g>
+      </g>
+    );
+  }
+
+  return content;
+};
+
   // Grass pitch theme background pattern colors
   const getPitchColors = () => {
     switch (pitchTheme) {
@@ -1008,13 +1130,23 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
     return res;
   }, [players]);
 
+  const isDrawingMode = selectedTool !== 'select' && selectedTool !== 'eraser';
+
   return (
-    <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-[#03150d] p-0 m-0 touch-none">
+    <div
+      className={`relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-[#03150d] p-0 m-0 ${
+        isDrawingMode ? 'touch-none' : 'touch-pan-y'
+      }`}
+    >
       <svg
         ref={svgRef}
         viewBox={getViewBox()}
         preserveAspectRatio="none"
-        className="w-full h-full touch-none cursor-crosshair tactical-draggable"
+        className={`w-full h-full ${
+          isDrawingMode
+            ? 'touch-none cursor-crosshair tactical-draggable'
+            : 'touch-pan-y cursor-default'
+        }`}
         onContextMenu={(e) => {
           e.preventDefault();
         }}
@@ -1023,7 +1155,11 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         onTouchMove={(e) => {
-          if (draggedItem || rotatingPlayerId || currentDrawing) {
+          // If multi-touch (e.g. 2 fingers), allow native scrolling / gesture
+          if (e.touches && e.touches.length > 1) {
+            return;
+          }
+          if (draggedItem || rotatingPlayerId || (isDrawingMode && currentDrawing)) {
             e.preventDefault();
           }
         }}
@@ -1178,6 +1314,33 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
                 />
               )}
 
+              {/* Quick Delete Badge for Selected Equipment */}
+              {isSelected && !isDragging && (
+                <g
+                  id={`delete-eq-btn-${eq.id}`}
+                  transform="translate(28, -6)"
+                  className="cursor-pointer transition-transform hover:scale-125 select-none"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic();
+                    if (onDeleteEquipment) {
+                      onDeleteEquipment(eq.id);
+                    } else {
+                      onUpdateEquipment(equipment.filter((item) => item.id !== eq.id));
+                    }
+                    setSelectedId(null);
+                    onSelectEquipment(null);
+                  }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  title="Elimina questo singolo attrezzo"
+                >
+                  <circle cx="0" cy="0" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="1.5" className="filter drop-shadow-md" />
+                  <path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" />
+                </g>
+              )}
+
               {/* Active Touch Drag Glow Ring */}
               {isDragging && (
                 <circle
@@ -1210,6 +1373,15 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
             jerseyStyle={jerseyStyle}
             onSelect={handleSelectPlayer}
             onStartRotate={handleStartRotate}
+            onDeletePlayer={(id) => {
+              triggerHaptic();
+              if (onDeletePlayer) {
+                onDeletePlayer(id);
+              } else {
+                onUpdatePlayers(players.filter((p) => p.id !== id));
+              }
+              setSelectedId(null);
+            }}
             onRotateQuick={(id, delta) => {
               if (onRotatePlayerQuick) {
                 onRotatePlayerQuick(id, delta);
@@ -1222,7 +1394,13 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
                 onUpdatePlayers(updated);
               }
             }}
-            onDoubleClick={onPlayerDoubleClick}
+            onDoubleClick={(p) => {
+              if (onOpenPlayerEdit) {
+                onOpenPlayerEdit(p);
+              } else {
+                onPlayerDoubleClick?.(p);
+              }
+            }}
           />
         ))}
       </svg>

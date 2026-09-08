@@ -35,6 +35,22 @@ html, body {
   flex-direction: column;
 }
 
+/* Landscape mode on iPhone & mobile devices: ensure smooth native vertical scrolling */
+@media (orientation: landscape) and (max-height: 540px) {
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  #root {
+    min-height: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
