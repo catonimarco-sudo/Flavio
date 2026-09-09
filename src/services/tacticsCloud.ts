@@ -36,6 +36,7 @@ export interface CloudTacticData {
 }
 
 export const TACTICS_COLLECTION = 'tactics';
+export const DEFAULT_FALLBACK_TACTIC_ID = 'tactic-gqcaude8';
 
 export enum OperationType {
   CREATE = 'create',

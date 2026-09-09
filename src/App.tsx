@@ -37,6 +37,7 @@ import {
   subscribeToTactic,
   generateTacticId,
   CloudTacticData,
+  DEFAULT_FALLBACK_TACTIC_ID,
 } from './services/tacticsCloud';
 
 const getEquipmentInfo = (type: EquipmentType) => {
@@ -324,24 +325,23 @@ export default function App() {
 
   const pitchSvgRef = useRef<SVGSVGElement | null>(null);
 
-  // Cloud Sync & Realtime States
-  const [currentTacticId, setCurrentTacticId] = useState<string | null>(() => {
+  // Cloud Sync & Realtime States (Default fallback to 'tactic-gqcaude8' if ?id= is not in URL)
+  const [currentTacticId, setCurrentTacticId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlId = params.get('id');
-      if (urlId) return urlId;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const urlId = params.get('id');
+        if (urlId && urlId.trim()) return urlId.trim();
+      } catch {}
     }
-    try {
-      return localStorage.getItem(`${STORAGE_KEY}_current_cloud_id`) || null;
-    } catch {
-      return null;
-    }
+    return DEFAULT_FALLBACK_TACTIC_ID;
   });
 
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('idle');
   const [cloudErrorMessage, setCloudErrorMessage] = useState<string | null>(null);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
   const isApplyingRemoteUpdateRef = useRef(false);
+  const isInitialSnapshotLoadedRef = useRef(false);
 
   // Push state to undo history
   const recordHistory = useCallback(() => {
@@ -470,7 +470,7 @@ export default function App() {
     }
   }, [currentTacticId]);
 
-  // Real-time Firestore onSnapshot listener
+  // Real-time Firestore onSnapshot listener with proper cleanup function
   useEffect(() => {
     if (!currentTacticId) return;
 
@@ -480,7 +480,9 @@ export default function App() {
       (cloudData: CloudTacticData) => {
         if (!cloudData) return;
 
+        // Avoid infinite echo loops by flagging remote update
         isApplyingRemoteUpdateRef.current = true;
+        isInitialSnapshotLoadedRef.current = true;
 
         if (cloudData.title) setTacticTitle(cloudData.title);
         if (cloudData.squad && Array.isArray(cloudData.squad)) setSquad(cloudData.squad);
@@ -510,36 +512,83 @@ export default function App() {
         }
 
         setCloudSyncStatus('saved');
+        setCloudErrorMessage(null);
+
         setTimeout(() => {
           isApplyingRemoteUpdateRef.current = false;
-        }, 300);
+        }, 400);
       },
       (error) => {
-        console.error('Firestore sync error:', error);
+        console.error('Firestore real-time sync error:', error);
         setCloudSyncStatus('error');
-        setCloudErrorMessage('Errore connessione Firestore');
+        setCloudErrorMessage('Errore connessione Firestore in tempo reale');
       }
     );
 
+    // Return cleanup function to unsubscribe and avoid memory leaks or duplicate listeners
     return () => {
       unsubscribe();
     };
   }, [currentTacticId]);
 
-  // Initial Load by URL query param ?id=
+  // Initial Load by URL query param ?id= with Fallback to DEFAULT_FALLBACK_TACTIC_ID
   useEffect(() => {
     try {
       if (typeof window !== 'undefined' && window.location) {
         const params = new URLSearchParams(window.location.search);
         const urlId = params.get('id');
-        if (urlId && urlId !== currentTacticId) {
-          setCurrentTacticId(urlId);
+        if (urlId && urlId.trim()) {
+          if (urlId.trim() !== currentTacticId) {
+            setCurrentTacticId(urlId.trim());
+          }
+        } else {
+          // If no ?id= parameter was passed in URL, explicitly set default fallback tactic
+          setCurrentTacticId(DEFAULT_FALLBACK_TACTIC_ID);
+          const url = new URL(window.location.href);
+          url.searchParams.set('id', DEFAULT_FALLBACK_TACTIC_ID);
+          window.history.replaceState({}, '', url.toString());
         }
       }
     } catch {
-      // Ignore URL access restrictions
+      // Ignore URL access restrictions in iframe
     }
   }, []);
+
+  // Debounced auto-save to Firestore on local modifications so other devices get updates in real time
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      isInitialSnapshotLoadedRef.current = true;
+    }, 1200);
+    return () => clearTimeout(safetyTimer);
+  }, [currentTacticId]);
+
+  useEffect(() => {
+    if (
+      !currentTacticId ||
+      !isInitialSnapshotLoadedRef.current ||
+      isApplyingRemoteUpdateRef.current
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleSaveToCloud(currentTacticId);
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [
+    players,
+    equipment,
+    drawings,
+    squad,
+    drillSheet,
+    tacticTitle,
+    animationSteps,
+    pitchSection,
+    pitchTheme,
+    jerseyStyle,
+    currentTacticId,
+  ]);
 
   // Save current whiteboard state to Firestore Cloud
   const handleSaveToCloud = async (overrideId?: string) => {
