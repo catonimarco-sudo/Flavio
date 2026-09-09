@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import firebaseConfigJson from '../firebase-applet-config.json';
 
 // Read config from env or fallback to config JSON
@@ -20,6 +21,7 @@ const databaseId = firebaseConfigJson.firestoreDatabaseId && firebaseConfigJson.
   : undefined;
 
 export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+export const auth = getAuth(app);
 export { app };
 
 // Test Firestore connection on boot safely without throwing uncaught errors

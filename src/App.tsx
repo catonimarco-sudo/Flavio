@@ -120,14 +120,20 @@ function sanitizeDrawing(dr: TacticalDrawing): TacticalDrawing {
     }
     return pt;
   });
-  let controlPoint = dr.controlPoint;
-  if (controlPoint && controlPoint.x <= 100 && controlPoint.y <= 100) {
-    controlPoint = {
-      x: Math.round((controlPoint.x / 100) * 1050),
-      y: Math.round((controlPoint.y / 100) * 680),
-    };
+  const res: TacticalDrawing = { ...dr, points };
+  if (dr.controlPoint) {
+    let cp = dr.controlPoint;
+    if (cp.x <= 100 && cp.y <= 100) {
+      cp = {
+        x: Math.round((cp.x / 100) * 1050),
+        y: Math.round((cp.y / 100) * 680),
+      };
+    }
+    res.controlPoint = cp;
+  } else {
+    delete (res as any).controlPoint;
   }
-  return { ...dr, points, controlPoint };
+  return res;
 }
 
 function sanitizeDrawingsList(drawings: TacticalDrawing[]): TacticalDrawing[] {
@@ -563,7 +569,12 @@ export default function App() {
     } catch (err: any) {
       console.error('Error saving tactic to Firestore:', err);
       setCloudSyncStatus('error');
-      setCloudErrorMessage(err?.message || 'Errore durante il salvataggio Firestore');
+      let msg = err?.message || 'Errore durante il salvataggio Firestore';
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed.error) msg = parsed.error;
+      } catch {}
+      setCloudErrorMessage(msg);
     }
   };
 

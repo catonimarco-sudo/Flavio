@@ -6,7 +6,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import {
   PlacedPlayer,
   PlacedEquipment,
@@ -37,6 +37,93 @@ export interface CloudTacticData {
 
 export const TACTICS_COLLECTION = 'tactics';
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null
+): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo:
+        auth?.currentUser?.providerData?.map((provider) => ({
+          providerId: provider.providerId,
+          email: provider.email,
+        })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+/**
+ * Deeply strips all undefined properties from an object or array.
+ * Firestore setDoc strictly rejects objects with undefined properties.
+ */
+export function removeUndefinedFields<T>(value: T): T {
+  if (value === undefined) {
+    return undefined as unknown as T;
+  }
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined)
+      .map((item) => removeUndefinedFields(item)) as unknown as T;
+  }
+
+  // Preserve Firestore FieldValues or Timestamps
+  if ('_methodName' in (value as any) || (value as any) instanceof Timestamp) {
+    return value;
+  }
+
+  const cleaned: Record<string, any> = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (val !== undefined) {
+      const cleanedVal = removeUndefinedFields(val);
+      if (cleanedVal !== undefined) {
+        cleaned[key] = cleanedVal;
+      }
+    }
+  }
+  return cleaned as unknown as T;
+}
+
 /**
  * Generate a random memorable tactic ID or short slug
  */
@@ -56,21 +143,28 @@ export async function saveTacticToCloud(
   tacticId: string,
   data: Omit<CloudTacticData, 'id' | 'updatedAt'>
 ): Promise<string> {
-  const docRef = doc(db, TACTICS_COLLECTION, tacticId);
-  const payload = {
-    ...data,
-    id: tacticId,
-    updatedAt: serverTimestamp(),
-  };
+  const docPath = `${TACTICS_COLLECTION}/${tacticId}`;
+  try {
+    const docRef = doc(db, TACTICS_COLLECTION, tacticId);
+    const cleanedData = removeUndefinedFields(data);
+    const payload = {
+      ...cleanedData,
+      id: tacticId,
+      updatedAt: serverTimestamp(),
+    };
 
-  await setDoc(docRef, payload, { merge: true });
-  return tacticId;
+    await setDoc(docRef, payload, { merge: true });
+    return tacticId;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+  }
 }
 
 /**
  * Load tactic directly once by ID
  */
 export async function fetchTacticFromCloud(tacticId: string): Promise<CloudTacticData | null> {
+  const docPath = `${TACTICS_COLLECTION}/${tacticId}`;
   try {
     const docRef = doc(db, TACTICS_COLLECTION, tacticId);
     const snap = await getDoc(docRef);
@@ -80,7 +174,7 @@ export async function fetchTacticFromCloud(tacticId: string): Promise<CloudTacti
     return null;
   } catch (error) {
     console.warn('Error fetching tactic from Firestore:', error);
-    return null;
+    handleFirestoreError(error, OperationType.GET, docPath);
   }
 }
 
@@ -92,6 +186,7 @@ export function subscribeToTactic(
   onUpdate: (data: CloudTacticData) => void,
   onError?: (err: Error) => void
 ): () => void {
+  const docPath = `${TACTICS_COLLECTION}/${tacticId}`;
   try {
     const docRef = doc(db, TACTICS_COLLECTION, tacticId);
     const unsubscribe = onSnapshot(
@@ -108,14 +203,26 @@ export function subscribeToTactic(
       },
       (error) => {
         console.warn('Real-time sync error on tactic:', error);
-        if (onError) onError(error);
+        if (onError) {
+          try {
+            handleFirestoreError(error, OperationType.GET, docPath);
+          } catch (wrappedErr) {
+            onError(wrappedErr as Error);
+          }
+        }
       }
     );
 
     return unsubscribe;
   } catch (subErr) {
     console.warn('Failed to attach onSnapshot listener:', subErr);
-    if (onError && subErr instanceof Error) onError(subErr);
+    if (onError && subErr instanceof Error) {
+      try {
+        handleFirestoreError(subErr, OperationType.GET, docPath);
+      } catch (wrappedErr) {
+        onError(wrappedErr as Error);
+      }
+    }
     return () => {};
   }
 }
