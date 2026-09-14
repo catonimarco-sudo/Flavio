@@ -117,7 +117,11 @@ export type PitchSection =
   | 'left_flank'
   | 'penalty_box';
 
-export type PitchTheme = 'stripes' | 'classic' | 'dark_tactical' | 'light_turf';
+export type PitchTheme =
+  | 'stripes'
+  | 'classic'
+  | 'dark_tactical'
+  | 'light_turf';
 
 export interface AnimationStep {
   id: string;

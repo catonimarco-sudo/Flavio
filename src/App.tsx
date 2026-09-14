@@ -29,6 +29,9 @@ import { PresetsModal } from './components/PresetsModal';
 import { ExportModal } from './components/ExportModal';
 import { PlayerEditPopover } from './components/PlayerEditPopover';
 import { AnimationControls } from './components/AnimationControls';
+import { KitCustomizerModal } from './components/KitCustomizerModal';
+import { AppBrandModal } from './components/AppBrandModal';
+import { loadSavedAppBranding, applyAppBrandingToDocument } from './utils/appIconGenerator';
 import { X, Sparkles, Layers, Eye, Trash2, RotateCw, Copy, Settings } from 'lucide-react';
 import { CloudSyncStatus } from './components/Header';
 import {
@@ -265,6 +268,16 @@ export default function App() {
   const [isDrillModalOpen, setIsDrillModalOpen] = useState(false);
   const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isKitModalOpen, setIsKitModalOpen] = useState(false);
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  const [brandName, setBrandName] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('mistertactics_brand_name');
+      return saved || 'MisterTactics';
+    } catch {
+      return 'MisterTactics';
+    }
+  });
 
   // History stack for Undo / Redo
   const [history, setHistory] = useState<
@@ -342,6 +355,18 @@ export default function App() {
   const [isCopiedLink, setIsCopiedLink] = useState(false);
   const isApplyingRemoteUpdateRef = useRef(false);
   const isInitialSnapshotLoadedRef = useRef(false);
+
+  // Initialize brand name and iPhone/iPad home screen icon on startup
+  useEffect(() => {
+    try {
+      const { config, iconDataUri } = loadSavedAppBranding();
+      const appName = config?.appName || 'MisterTactics';
+      setBrandName(appName);
+      applyAppBrandingToDocument(appName, iconDataUri);
+    } catch (e) {
+      console.warn('Failed to apply app branding on startup:', e);
+    }
+  }, []);
 
   // Push state to undo history
   const recordHistory = useCallback(() => {
@@ -718,6 +743,80 @@ export default function App() {
     }
   };
 
+  const handleApplyKitToTeam = (
+    team: 'home' | 'away' | 'jolly' | 'keeper' | 'referee',
+    kitUrl: string,
+    primaryColor: string,
+    secondaryColor: string
+  ) => {
+    recordHistory();
+    updatePlayersWithStep((prev) =>
+      prev.map((p) =>
+        p.team === team
+          ? {
+              ...p,
+              jerseyImageUrl: kitUrl,
+              customColor: primaryColor,
+              secondaryColor: secondaryColor,
+            }
+          : p
+      )
+    );
+    if (editingPlayer && editingPlayer.team === team) {
+      setEditingPlayer({
+        ...editingPlayer,
+        jerseyImageUrl: kitUrl,
+        customColor: primaryColor,
+        secondaryColor: secondaryColor,
+      });
+    }
+    if (selectedPlayer && selectedPlayer.team === team) {
+      setSelectedPlayer({
+        ...selectedPlayer,
+        jerseyImageUrl: kitUrl,
+        customColor: primaryColor,
+        secondaryColor: secondaryColor,
+      });
+    }
+  };
+
+  const handleApplyKitToPlayer = (
+    playerId: string,
+    kitUrl: string,
+    primaryColor: string,
+    secondaryColor: string
+  ) => {
+    recordHistory();
+    updatePlayersWithStep((prev) =>
+      prev.map((p) =>
+        p.id === playerId
+          ? {
+              ...p,
+              jerseyImageUrl: kitUrl,
+              customColor: primaryColor,
+              secondaryColor: secondaryColor,
+            }
+          : p
+      )
+    );
+    if (editingPlayer && editingPlayer.id === playerId) {
+      setEditingPlayer({
+        ...editingPlayer,
+        jerseyImageUrl: kitUrl,
+        customColor: primaryColor,
+        secondaryColor: secondaryColor,
+      });
+    }
+    if (selectedPlayer && selectedPlayer.id === playerId) {
+      setSelectedPlayer({
+        ...selectedPlayer,
+        jerseyImageUrl: kitUrl,
+        customColor: primaryColor,
+        secondaryColor: secondaryColor,
+      });
+    }
+  };
+
   const handleDuplicateEquipment = (eq: PlacedEquipment) => {
     recordHistory();
     const copy: PlacedEquipment = {
@@ -1012,6 +1111,9 @@ export default function App() {
       <Header
         tacticTitle={tacticTitle}
         onUpdateTitle={setTacticTitle}
+        brandName={brandName}
+        onOpenBrandModal={() => setIsBrandModalOpen(true)}
+        onOpenKitModal={() => setIsKitModalOpen(true)}
         squadCount={squad.length}
         onOpenSquadModal={() => setIsSquadModalOpen(true)}
         onOpenDrillModal={() => setIsDrillModalOpen(true)}
@@ -1487,6 +1589,7 @@ export default function App() {
                 return 'broadcast';
               })
             }
+            onOpenKitCustomizer={() => setIsKitModalOpen(true)}
           />
         </div>
       </section>
@@ -1627,8 +1730,36 @@ export default function App() {
               });
             }
           }}
+          onOpenKitCustomizer={() => setIsKitModalOpen(true)}
         />
       )}
+
+      {/* Kit & Jersey Customizer Modal (Patterns, Stripes, Colors, Numbers, Crests) */}
+      <KitCustomizerModal
+        isOpen={isKitModalOpen}
+        onClose={() => setIsKitModalOpen(false)}
+        players={players}
+        selectedPlayer={editingPlayer || selectedPlayer || null}
+        activePlayer={editingPlayer || selectedPlayer || null}
+        onApplyKitToTeam={handleApplyKitToTeam}
+        onApplyToTeam={handleApplyKitToTeam}
+        onApplyKitToPlayer={handleApplyKitToPlayer}
+        onApplyToPlayer={handleApplyKitToPlayer}
+      />
+
+      {/* App Branding & iOS/iPad Home Screen Icon Modal */}
+      <AppBrandModal
+        isOpen={isBrandModalOpen}
+        onClose={() => setIsBrandModalOpen(false)}
+        currentBrandName={brandName}
+        currentAppName={brandName}
+        onUpdateBrandName={(newName) => {
+          setBrandName(newName);
+        }}
+        onUpdateAppName={(newName) => {
+          setBrandName(newName);
+        }}
+      />
     </div>
   );
 }

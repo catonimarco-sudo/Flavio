@@ -17,6 +17,8 @@ import {
   RefreshCw,
   Share2,
   Copy,
+  Shirt,
+  Smartphone,
 } from 'lucide-react';
 
 export type CloudSyncStatus = 'idle' | 'saving' | 'saved' | 'live' | 'error';
@@ -24,6 +26,9 @@ export type CloudSyncStatus = 'idle' | 'saving' | 'saved' | 'live' | 'error';
 interface HeaderProps {
   tacticTitle: string;
   onUpdateTitle: (title: string) => void;
+  brandName?: string;
+  onOpenBrandModal?: () => void;
+  onOpenKitModal?: () => void;
   squadCount: number;
   onOpenSquadModal: () => void;
   onOpenDrillModal: () => void;
@@ -47,6 +52,9 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   tacticTitle,
   onUpdateTitle,
+  brandName = 'MisterTactics',
+  onOpenBrandModal,
+  onOpenKitModal,
   squadCount,
   onOpenSquadModal,
   onOpenDrillModal,
@@ -95,20 +103,32 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Brand Logo */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white text-xs shadow-sm">
+        {/* Brand Logo & Name (Clickable to customize Name & Icon) */}
+        <button
+          type="button"
+          onClick={onOpenBrandModal}
+          className="flex items-center gap-1.5 shrink-0 text-left hover:opacity-90 transition-opacity group cursor-pointer p-0.5 rounded-lg"
+          title="Personalizza Nome App & Icona iPhone / iPad"
+        >
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center font-bold text-white text-xs shadow-sm group-hover:scale-105 transition-transform">
             <Shield size={15} className="stroke-[2.5]" />
           </div>
           <div className="hidden sm:flex items-center gap-1.5 leading-none">
-            <span className="font-extrabold text-sm tracking-tight text-white font-sans">
-              Mister<span className="text-emerald-400">Tactics</span>
+            <span className="font-extrabold text-sm tracking-tight text-white font-sans flex items-center gap-1">
+              {brandName === 'MisterTactics' ? (
+                <>
+                  Mister<span className="text-emerald-400">Tactics</span>
+                </>
+              ) : (
+                <span className="text-emerald-300 font-bold max-w-[140px] md:max-w-[200px] truncate">{brandName}</span>
+              )}
+              <Edit3 size={10} className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </span>
             <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 uppercase hidden md:inline">
               Cloud HD
             </span>
           </div>
-        </div>
+        </button>
 
         <div className="h-4 w-px bg-slate-800 hidden md:block" />
 
@@ -230,6 +250,32 @@ export const Header: React.FC<HeaderProps> = ({
             {squadCount}
           </span>
         </button>
+
+        {/* Personalizza Maglie & Divise Modal */}
+        {onOpenKitModal && (
+          <button
+            id="btn-open-kits"
+            onClick={onOpenKitModal}
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition-colors active:scale-95 shrink-0"
+            title="Personalizza maglie, strisce, stemmi e colori squadra"
+          >
+            <Shirt size={13} className="text-amber-400" />
+            <span className="hidden sm:inline">Maglie</span>
+          </button>
+        )}
+
+        {/* Personalizza App & Icona iPhone/iPad */}
+        {onOpenBrandModal && (
+          <button
+            id="btn-open-brand-icon"
+            onClick={onOpenBrandModal}
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition-colors active:scale-95 shrink-0"
+            title="Personalizza nome app e icona per iPhone / iPad"
+          >
+            <Smartphone size={13} className="text-emerald-400" />
+            <span className="hidden md:inline">Icona iOS</span>
+          </button>
+        )}
 
         {/* Scheda Esercizio Modal */}
         <button

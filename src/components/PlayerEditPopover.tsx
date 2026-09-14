@@ -25,6 +25,7 @@ interface PlayerEditPopoverProps {
   onClose: () => void;
   onUpdatePlayer: (updated: PlacedPlayer) => void;
   onRemovePlayer: (id: string) => void;
+  onOpenKitCustomizer?: () => void;
   onApplyJerseyToTeam?: (
     team: 'home' | 'away' | 'jolly' | 'keeper' | 'referee',
     jerseyUrl: string | undefined
@@ -68,6 +69,7 @@ export const PlayerEditPopover: React.FC<PlayerEditPopoverProps> = ({
   onClose,
   onUpdatePlayer,
   onRemovePlayer,
+  onOpenKitCustomizer,
   onApplyJerseyToTeam,
   onApplyColorToTeam,
 }) => {
@@ -360,6 +362,17 @@ export const PlayerEditPopover: React.FC<PlayerEditPopoverProps> = ({
 
             {/* Divisa Grafica Personalizzata & Sponsor */}
             <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+              {onOpenKitCustomizer && (
+                <button
+                  type="button"
+                  onClick={onOpenKitCustomizer}
+                  className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-[11px] shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
+                >
+                  <Shirt size={14} />
+                  <span>Apri Kit Designer (Strisce, Motivi & Stemmi)</span>
+                </button>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" />

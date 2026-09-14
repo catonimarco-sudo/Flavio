@@ -35,7 +35,8 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
   onDeletePlayer,
   onDoubleClick,
 }) => {
-  const { team, role, number, name, photoUrl, rotation = 0 } = player;
+  const { team, role, number, name: rawName, photoUrl, rotation = 0 } = player;
+  const name = rawName || '';
 
   // Normalize rotation angle 0..360 & determine perspective
   const normRot = ((rotation % 360) + 360) % 360;

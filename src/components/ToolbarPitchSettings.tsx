@@ -33,6 +33,7 @@ interface ToolbarPitchSettingsProps {
   onToggleOrientation: () => void;
   jerseyStyle: JerseyStyle;
   onCycleJerseyStyle: () => void;
+  onOpenKitCustomizer?: () => void;
 }
 
 const SECTIONS: { id: PitchSection; label: string }[] = [
@@ -66,6 +67,7 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
   onToggleOrientation,
   jerseyStyle,
   onCycleJerseyStyle,
+  onOpenKitCustomizer,
 }) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 bg-slate-900 text-xs text-slate-300 select-none">
@@ -177,6 +179,19 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
               : 'Cerchi'}
           </span>
         </button>
+
+        {/* Pulsante Crea Divisa / Kit Customizer */}
+        {onOpenKitCustomizer && (
+          <button
+            id="btn-open-kit-customizer"
+            onClick={onOpenKitCustomizer}
+            className="flex items-center gap-1 px-2 py-0.5 rounded border border-amber-500/50 bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 text-[10px] font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+            title="Personalizza maglie con strisce, bande diagonali, stemmi e colori personalizzati"
+          >
+            <Shirt size={11} className="text-amber-400" />
+            <span>Crea Divisa</span>
+          </button>
+        )}
 
         {/* Player Toggles: Nomi, Numeri, Foto, Ruoli, Sguardo */}
         <div className="flex items-center bg-slate-950 rounded p-0.5 border border-slate-800 text-[10px]">

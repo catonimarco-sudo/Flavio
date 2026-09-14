@@ -26,8 +26,8 @@ export const KIT_COLOR_PRESETS: KitPreset[] = [
   { id: 'sky', name: 'Celeste', hex: '#0ea5e9' },
 ];
 
-function hexToHsl(hex: string): { h: number; s: number; l: number } {
-  let c = hex.replace('#', '').trim();
+function hexToHsl(hex?: string): { h: number; s: number; l: number } {
+  let c = (hex || '').replace('#', '').trim();
   if (c.length === 3) {
     c = c
       .split('')
@@ -65,21 +65,21 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h, s, l };
 }
 
-export function getKitVisuals(player: {
+export function getKitVisuals(player?: {
   customColor?: string;
   team?: 'home' | 'away' | 'jolly' | 'keeper' | 'referee' | string;
   role?: string;
 }): KitVisualConfig {
-  let hex = player.customColor;
+  let hex = player?.customColor;
 
   if (!hex) {
-    if (player.team === 'away') {
+    if (player?.team === 'away') {
       hex = '#1d4ed8'; // Default away: Navy/Azzurro
-    } else if (player.team === 'keeper' || player.role === 'POR') {
+    } else if (player?.team === 'keeper' || player?.role === 'POR') {
       hex = '#16a34a'; // Default keeper: Emerald green
-    } else if (player.team === 'jolly') {
+    } else if (player?.team === 'jolly') {
       hex = '#ea580c'; // Default jolly: Orange
-    } else if (player.team === 'referee' || player.role === 'ARB') {
+    } else if (player?.team === 'referee' || player?.role === 'ARB') {
       hex = '#0f172a'; // Default referee: Black
     } else {
       hex = '#eab308'; // Default home: Yellow Gold (matches EA FC broadcast photo)
