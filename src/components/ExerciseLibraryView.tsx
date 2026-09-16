@@ -16,6 +16,9 @@ import {
   X,
   Sparkles,
   Check,
+  Edit2,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 interface ExerciseLibraryViewProps {
@@ -49,6 +52,73 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
 
   // Local state for favorites toggle
   const [exercisesList, setExercisesList] = useState<CoachLabExercise[]>(COACHLAB_EXERCISES);
+
+  // Dynamic Exercise Categories (saved to localStorage)
+  const [exerciseCategories, setExerciseCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('mistertactics_exercise_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      'Possesso palla',
+      'Finalizzazione',
+      'Transizioni',
+      'Riscaldamento',
+      'Tattica',
+      'Partita a tema',
+      'Palle inattive',
+      'Portieri',
+    ];
+  });
+
+  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
+  const [newCatInput, setNewCatInput] = useState('');
+  const [editingCatIndex, setEditingCatIndex] = useState<number | null>(null);
+  const [editingCatValue, setEditingCatValue] = useState('');
+
+  const saveCategoriesToStorage = (cats: string[]) => {
+    setExerciseCategories(cats);
+    try {
+      localStorage.setItem('mistertactics_exercise_categories', JSON.stringify(cats));
+    } catch {}
+  };
+
+  const handleAddExerciseCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCatInput.trim();
+    if (!trimmed) return;
+    if (exerciseCategories.includes(trimmed)) return;
+    const updated = [...exerciseCategories, trimmed];
+    saveCategoriesToStorage(updated);
+    setNewCatInput('');
+    setSelectedCategory(trimmed);
+  };
+
+  const handleRenameExerciseCategory = (index: number) => {
+    const trimmed = editingCatValue.trim();
+    if (!trimmed) return;
+    const oldName = exerciseCategories[index];
+    const updated = [...exerciseCategories];
+    updated[index] = trimmed;
+    saveCategoriesToStorage(updated);
+    // Update exercises that used old category
+    setExercisesList((prev) =>
+      prev.map((ex) => (ex.category === oldName ? { ...ex, category: trimmed } : ex))
+    );
+    if (selectedCategory === oldName) setSelectedCategory(trimmed);
+    setEditingCatIndex(null);
+  };
+
+  const handleDeleteExerciseCategory = (catToDelete: string) => {
+    if (confirm(`Eliminare la categoria "${catToDelete}"?`)) {
+      const updated = exerciseCategories.filter((c) => c !== catToDelete);
+      saveCategoriesToStorage(updated);
+      if (selectedCategory === catToDelete) setSelectedCategory('Tutte');
+    }
+  };
 
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -179,25 +249,33 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
       <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3 sm:p-4 mb-5 shadow-lg flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {/* Categoria Dropdown */}
-          <div className="flex flex-col gap-1 min-w-[150px]">
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 font-bold">
-              CATEGORIA
-            </span>
+          <div className="flex flex-col gap-1 min-w-[170px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 font-bold">
+                CATEGORIA
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsManageCategoriesOpen(true)}
+                className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-0.5 cursor-pointer"
+                title="Aggiungi o modifica categorie esercizi"
+              >
+                <Plus size={11} />
+                <span>Gestisci</span>
+              </button>
+            </div>
             <div className="relative">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="w-full appearance-none bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 pr-8 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
               >
-                <option value="Tutte">Tutte</option>
-                <option value="Possesso palla">Possesso palla</option>
-                <option value="Finalizzazione">Finalizzazione</option>
-                <option value="Transizioni">Transizioni</option>
-                <option value="Riscaldamento">Riscaldamento</option>
-                <option value="Tattica">Tattica</option>
-                <option value="Partita a tema">Partita a tema</option>
-                <option value="Palle inattive">Palle inattive</option>
-                <option value="Portieri">Portieri</option>
+                <option value="Tutte">Tutte ({exercisesList.length})</option>
+                {exerciseCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
@@ -576,6 +654,126 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Modal Gestione Categorie Esercizi */}
+      {isManageCategoriesOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/80 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setIsManageCategoriesOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white">Categorie Esercitazioni</h3>
+                <p className="text-xs text-slate-400">Aggiungi nuove categorie o rinomina quelle esistenti</p>
+              </div>
+              <button
+                onClick={() => setIsManageCategoriesOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Aggiungi nuova */}
+            <form onSubmit={handleAddExerciseCategory} className="flex gap-2">
+              <input
+                type="text"
+                value={newCatInput}
+                onChange={(e) => setNewCatInput(e.target.value)}
+                placeholder="Nuova categoria (es. Duelli 1v1)..."
+                className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Aggiungi</span>
+              </button>
+            </form>
+
+            {/* Lista categorie esistenti con modifica ed elimina */}
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+              {exerciseCategories.map((cat, idx) => (
+                <div
+                  key={cat}
+                  className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/90 flex items-center justify-between text-xs"
+                >
+                  {editingCatIndex === idx ? (
+                    <div className="flex items-center gap-2 flex-1 mr-2">
+                      <input
+                        type="text"
+                        value={editingCatValue}
+                        onChange={(e) => setEditingCatValue(e.target.value)}
+                        className="flex-1 px-2 py-1 rounded bg-slate-900 border border-emerald-500 text-xs text-white focus:outline-none"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRenameExerciseCategory(idx)}
+                        className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-500"
+                        title="Salva nome"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCatIndex(null)}
+                        className="p-1 bg-slate-800 text-slate-400 rounded hover:text-white"
+                        title="Annulla"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="text-slate-200 font-medium">{cat}</span>
+                    </div>
+                  )}
+
+                  {editingCatIndex !== idx && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCatIndex(idx);
+                          setEditingCatValue(cat);
+                        }}
+                        className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition-colors"
+                        title="Rinomina categoria"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExerciseCategory(cat)}
+                        className="p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                        title="Elimina categoria"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsManageCategoriesOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

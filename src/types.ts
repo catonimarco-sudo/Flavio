@@ -160,3 +160,18 @@ export interface PresetTactic {
   drawings: TacticalDrawing[];
   drillSheet?: Partial<DrillSheet>;
 }
+
+export interface TeamCategory {
+  id: string;
+  name: string;
+  ageGroup?: string;
+  formation: string;
+  mister: string;
+  assistantMister?: string;
+  players: number;
+  attendanceRate: number; // percentage e.g. 94
+  status: 'Attivo' | 'In Pausa' | 'Concluso';
+  color: string;
+  notes?: string;
+  season?: string;
+}

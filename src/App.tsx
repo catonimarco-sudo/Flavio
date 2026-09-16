@@ -1275,7 +1275,14 @@ export default function App() {
         )}
 
         {activeNavTab === 'squadre' && (
-          <SquadreView onOpenTacticalBoard={() => setActiveNavTab('lavagna')} />
+          <SquadreView
+            onOpenTacticalBoard={() => setActiveNavTab('lavagna')}
+            onDeployCategoryOnBoard={(category) => {
+              handleApplyFormation(category.formation);
+              setTacticTitle(`Schema ${category.name} (${category.formation})`);
+              setActiveNavTab('lavagna');
+            }}
+          />
         )}
 
         {activeNavTab === 'giocatori' && (
