@@ -13,6 +13,7 @@ import {
   AnimationStep,
   EquipmentType,
   JerseyStyle,
+  AppBrandConfig,
 } from './types';
 import { INITIAL_SQUAD, INITIAL_AWAY_SQUAD } from './data/defaultPlayers';
 import { PRESET_TACTICS } from './data/presetTactics';
@@ -31,6 +32,7 @@ import { PlayerEditPopover } from './components/PlayerEditPopover';
 import { AnimationControls } from './components/AnimationControls';
 import { KitCustomizerModal } from './components/KitCustomizerModal';
 import { AppBrandModal } from './components/AppBrandModal';
+import { BrandCustomizerModal } from './components/BrandCustomizerModal';
 import { loadSavedAppBranding, applyAppBrandingToDocument } from './utils/appIconGenerator';
 import { X, Sparkles, Layers, Eye, Trash2, RotateCw, Copy, Settings } from 'lucide-react';
 import { CloudSyncStatus } from './components/Header';
@@ -286,6 +288,29 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isKitModalOpen, setIsKitModalOpen] = useState(false);
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  const [brandConfig, setBrandConfig] = useState<AppBrandConfig>(() => {
+    try {
+      const saved = localStorage.getItem('mistertactics_brand_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.namePart1 || parsed.namePart2)) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return {
+      namePart1: 'Coach',
+      namePart2: 'Lab',
+      highlightColor: '#34d399',
+      subtitle: 'ALLENARE CON METODO',
+      iconType: 'preset',
+      presetEmoji: '⚽',
+      presetBgColor: '#059669',
+      coachName: 'Mister Catoni',
+      coachRole: 'UEFA B • Under 13',
+    };
+  });
+  const [isBrandCustomizerOpen, setIsBrandCustomizerOpen] = useState(false);
   const [brandName, setBrandName] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('mistertactics_brand_name');
@@ -380,17 +405,76 @@ export default function App() {
   const isApplyingRemoteUpdateRef = useRef(false);
   const isInitialSnapshotLoadedRef = useRef(false);
 
+  const applyCustomBrandToDocument = useCallback((cfg: AppBrandConfig) => {
+    const fullBrand = `${cfg.namePart1} ${cfg.namePart2}`.trim();
+    document.title = `${fullBrand} - ${cfg.subtitle || 'Allenare con Metodo'}`;
+
+    if (cfg.iconType === 'custom_image' && cfg.customImageUrl) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = cfg.customImageUrl;
+    }
+  }, []);
+
+  const handleSaveBrandConfig = useCallback((newConfig: AppBrandConfig) => {
+    setBrandConfig(newConfig);
+    try {
+      localStorage.setItem('mistertactics_brand_settings', JSON.stringify(newConfig));
+      const fullBrand = `${newConfig.namePart1} ${newConfig.namePart2}`.trim();
+      localStorage.setItem('mistertactics_brand_name', fullBrand);
+      setBrandName(fullBrand);
+    } catch (e) {
+      console.warn('Failed to save brand settings:', e);
+    }
+    applyCustomBrandToDocument(newConfig);
+    setIsBrandCustomizerOpen(false);
+  }, [applyCustomBrandToDocument]);
+
+  const handleResetBrandConfig = useCallback(() => {
+    const defaultConfig: AppBrandConfig = {
+      namePart1: 'Coach',
+      namePart2: 'Lab',
+      highlightColor: '#34d399',
+      subtitle: 'ALLENARE CON METODO',
+      iconType: 'preset',
+      presetEmoji: '⚽',
+      presetBgColor: '#059669',
+      coachName: 'Mister Catoni',
+      coachRole: 'UEFA B • Under 13',
+    };
+    setBrandConfig(defaultConfig);
+    try {
+      localStorage.removeItem('mistertactics_brand_settings');
+      localStorage.setItem('mistertactics_brand_name', 'CoachLab');
+      setBrandName('CoachLab');
+    } catch {}
+    applyCustomBrandToDocument(defaultConfig);
+  }, [applyCustomBrandToDocument]);
+
   // Initialize brand name and iPhone/iPad home screen icon on startup
   useEffect(() => {
     try {
+      const savedSettings = localStorage.getItem('mistertactics_brand_settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        if (parsed && (parsed.namePart1 || parsed.namePart2)) {
+          applyCustomBrandToDocument(parsed);
+          setBrandName(`${parsed.namePart1} ${parsed.namePart2}`.trim());
+          return;
+        }
+      }
       const { config, iconDataUri } = loadSavedAppBranding();
-      const appName = config?.appName || 'MisterTactics';
+      const appName = config?.appName || 'CoachLab';
       setBrandName(appName);
       applyAppBrandingToDocument(appName, iconDataUri);
     } catch (e) {
       console.warn('Failed to apply app branding on startup:', e);
     }
-  }, []);
+  }, [applyCustomBrandToDocument]);
 
   // Push state to undo history
   const recordHistory = useCallback(() => {
@@ -1222,6 +1306,8 @@ export default function App() {
         onSelectTab={setActiveNavTab}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        brandConfig={brandConfig}
+        onOpenBrandCustomizer={() => setIsBrandCustomizerOpen(true)}
       />
 
       {/* Main Content Column */}
@@ -1239,6 +1325,8 @@ export default function App() {
             handleClearAll();
             setActiveNavTab('lavagna');
           }}
+          brandConfig={brandConfig}
+          onOpenBrandCustomizer={() => setIsBrandCustomizerOpen(true)}
         />
 
         {/* View Switcher based on activeNavTab */}
@@ -1312,7 +1400,8 @@ export default function App() {
         tacticTitle={tacticTitle}
         onUpdateTitle={setTacticTitle}
         brandName={brandName}
-        onOpenBrandModal={() => setIsBrandModalOpen(true)}
+        brandConfig={brandConfig}
+        onOpenBrandModal={() => setIsBrandCustomizerOpen(true)}
         onOpenKitModal={() => setIsKitModalOpen(true)}
         squadCount={squad.length}
         onOpenSquadModal={() => setIsSquadModalOpen(true)}
@@ -1982,6 +2071,15 @@ export default function App() {
         onUpdateAppName={(newName) => {
           setBrandName(newName);
         }}
+      />
+
+      {/* Brand & Logo Customizer Modal (Custom Name, Slogan, Logo Upload & Presets) */}
+      <BrandCustomizerModal
+        isOpen={isBrandCustomizerOpen}
+        onClose={() => setIsBrandCustomizerOpen(false)}
+        brandConfig={brandConfig}
+        onSaveBrand={handleSaveBrandConfig}
+        onResetToDefault={handleResetBrandConfig}
       />
     </div>
   );

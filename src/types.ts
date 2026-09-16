@@ -175,3 +175,16 @@ export interface TeamCategory {
   notes?: string;
   season?: string;
 }
+
+export interface AppBrandConfig {
+  namePart1: string;
+  namePart2: string;
+  highlightColor: string;
+  subtitle: string;
+  iconType: 'preset' | 'custom_image';
+  presetEmoji: string;
+  presetBgColor: string;
+  customImageUrl?: string;
+  coachName?: string;
+  coachRole?: string;
+}

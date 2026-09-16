@@ -13,7 +13,10 @@ import {
   Play,
   Layers,
   ChevronRight,
+  Edit2,
+  Sliders,
 } from 'lucide-react';
+import { AppBrandConfig } from '../types';
 
 export type CoachLabNavTab =
   | 'dashboard'
@@ -33,13 +36,29 @@ interface CoachLabSidebarProps {
   onSelectTab: (tab: CoachLabNavTab) => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
+  brandConfig?: AppBrandConfig;
+  onOpenBrandCustomizer?: () => void;
 }
+
+const DEFAULT_BRAND_CONFIG: AppBrandConfig = {
+  namePart1: 'Coach',
+  namePart2: 'Lab',
+  highlightColor: '#34d399',
+  subtitle: 'ALLENARE CON METODO',
+  iconType: 'preset',
+  presetEmoji: '⚽',
+  presetBgColor: '#059669',
+  coachName: 'Mister Catoni',
+  coachRole: 'UEFA B • Under 13',
+};
 
 export const CoachLabSidebar: React.FC<CoachLabSidebarProps> = ({
   activeTab,
   onSelectTab,
   isMobileOpen,
   onCloseMobile,
+  brandConfig = DEFAULT_BRAND_CONFIG,
+  onOpenBrandCustomizer,
 }) => {
   const menuItems = [
     { id: 'dashboard' as CoachLabNavTab, label: 'Dashboard', icon: LayoutDashboard },
@@ -53,6 +72,15 @@ export const CoachLabSidebar: React.FC<CoachLabSidebarProps> = ({
     { id: 'video' as CoachLabNavTab, label: 'Video', icon: Video },
     { id: 'note' as CoachLabNavTab, label: 'Note', icon: FileText },
   ];
+
+  // Derive initials from coach name
+  const coachInitials = (brandConfig.coachName || 'MC')
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   return (
     <>
@@ -70,24 +98,61 @@ export const CoachLabSidebar: React.FC<CoachLabSidebarProps> = ({
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Brand Header (Identical to CoachLab screenshot) */}
+        {/* Brand Header (Customizable Brand & Logo) */}
         <div>
-          <div className="p-5 border-b border-slate-800/80 flex items-center gap-3">
-            {/* Hexagonal / Shield Soccer Icon */}
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-950/60 shrink-0 border border-emerald-400/40">
-              <span className="text-xl">⚽</span>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950" />
+          <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between gap-2 group relative">
+            <div
+              onClick={onOpenBrandCustomizer}
+              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+              title="Clicca per personalizzare nome, logo e slogan"
+            >
+              {/* Logo / Icon */}
+              {brandConfig.iconType === 'custom_image' && brandConfig.customImageUrl ? (
+                <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/80 flex items-center justify-center shadow-lg shadow-emerald-950/40 shrink-0 group-hover:border-emerald-500 transition-colors">
+                  <img
+                    src={brandConfig.customImageUrl}
+                    alt="Logo Societario"
+                    className="w-full h-full object-contain p-0.5"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
+                </div>
+              ) : (
+                <div
+                  className="relative w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-950/60 shrink-0 border border-white/20 text-xl transition-transform group-hover:scale-105"
+                  style={{ backgroundColor: brandConfig.presetBgColor || '#059669' }}
+                >
+                  <span>{brandConfig.presetEmoji || '⚽'}</span>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950" />
+                </div>
+              )}
+
+              {/* Brand Title & Subtitle */}
+              <div className="min-w-0 flex-1">
+                <div className="text-lg font-black tracking-tight text-white flex items-center gap-1 leading-none truncate">
+                  <span>{brandConfig.namePart1 || 'Coach'}</span>
+                  {brandConfig.namePart2 && (
+                    <span style={{ color: brandConfig.highlightColor || '#34d399' }}>
+                      {brandConfig.namePart2}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 mt-1 font-mono truncate">
+                  {brandConfig.subtitle || 'ALLENARE CON METODO'}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <div className="text-lg font-black tracking-tight text-white flex items-center gap-1 leading-none">
-                <span>Coach</span>
-                <span className="text-emerald-400">Lab</span>
-              </div>
-              <div className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 mt-1 font-mono">
-                ALLENARE CON METODO
-              </div>
-            </div>
+            {/* Quick Edit Brand Button */}
+            {onOpenBrandCustomizer && (
+              <button
+                type="button"
+                onClick={onOpenBrandCustomizer}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-slate-900 transition-colors cursor-pointer shrink-0"
+                title="Personalizza brand e logo"
+              >
+                <Sliders size={15} />
+              </button>
+            )}
           </div>
 
           {/* Quick Access: Interactive Tactical Board */}
@@ -159,18 +224,29 @@ export const CoachLabSidebar: React.FC<CoachLabSidebarProps> = ({
 
         {/* Coach Profile Footer */}
         <div className="p-3 border-t border-slate-800/80 bg-slate-950">
-          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/90 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-emerald-700/50 border border-emerald-500/40 flex items-center justify-center text-xs font-bold text-emerald-300 shrink-0">
-              MC
+          <div
+            onClick={onOpenBrandCustomizer}
+            className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800/90 hover:border-slate-700 flex items-center justify-between gap-2.5 cursor-pointer transition-colors group"
+            title="Clicca per modificare profilo e brand"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-emerald-700/50 border border-emerald-500/40 flex items-center justify-center text-xs font-bold text-emerald-300 shrink-0">
+                {coachInitials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
+                  {brandConfig.coachName || 'Mister Catoni'}
+                </div>
+                <div className="text-[10px] text-slate-400 truncate">
+                  {brandConfig.coachRole || 'UEFA B • Under 13'}
+                </div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-white truncate">Mister Catoni</div>
-              <div className="text-[10px] text-slate-400 truncate">UEFA B • Under 13</div>
-            </div>
-            <span className="w-2 h-2 rounded-full bg-emerald-400" title="Online" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Online" />
           </div>
         </div>
       </aside>
     </>
   );
 };
+

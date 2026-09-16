@@ -8,8 +8,10 @@ import {
   Bell,
   Layers,
   BookOpen,
+  Sliders,
 } from 'lucide-react';
 import { CoachLabNavTab } from './CoachLabSidebar';
+import { AppBrandConfig } from '../types';
 
 interface CoachLabTopBarProps {
   activeTab: CoachLabNavTab;
@@ -20,6 +22,8 @@ interface CoachLabTopBarProps {
   showFavoritesOnly: boolean;
   onToggleFavoritesOnly: () => void;
   onNewExercise: () => void;
+  brandConfig?: AppBrandConfig;
+  onOpenBrandCustomizer?: () => void;
 }
 
 export const CoachLabTopBar: React.FC<CoachLabTopBarProps> = ({
@@ -31,11 +35,13 @@ export const CoachLabTopBar: React.FC<CoachLabTopBarProps> = ({
   showFavoritesOnly,
   onToggleFavoritesOnly,
   onNewExercise,
+  brandConfig,
+  onOpenBrandCustomizer,
 }) => {
   return (
-    <header className="w-full bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 sticky top-0 z-30 select-none">
+    <header className="w-full bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 sticky top-0 z-30 select-none">
       {/* Left: Mobile Menu Toggle & Breadcrumb */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onOpenMobileMenu}
           className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 lg:hidden cursor-pointer"
@@ -43,8 +49,33 @@ export const CoachLabTopBar: React.FC<CoachLabTopBarProps> = ({
           <Menu size={20} />
         </button>
 
+        {/* Mobile Brand indicator */}
+        {brandConfig && (
+          <div
+            onClick={onOpenBrandCustomizer}
+            className="flex items-center gap-1.5 lg:hidden cursor-pointer py-1 px-1.5 rounded-lg hover:bg-slate-900"
+            title="Personalizza Brand"
+          >
+            {brandConfig.iconType === 'custom_image' && brandConfig.customImageUrl ? (
+              <img
+                src={brandConfig.customImageUrl}
+                alt="Logo"
+                className="w-6 h-6 rounded-md object-contain"
+              />
+            ) : (
+              <span className="text-base">{brandConfig.presetEmoji || '⚽'}</span>
+            )}
+            <span className="text-xs font-black text-white">
+              {brandConfig.namePart1}{' '}
+              <span style={{ color: brandConfig.highlightColor || '#34d399' }}>
+                {brandConfig.namePart2}
+              </span>
+            </span>
+          </div>
+        )}
+
         {/* View Switcher Pills */}
-        <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+        <div className="hidden sm:flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
           <button
             onClick={() => onSelectTab('esercizi')}
             className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -89,6 +120,18 @@ export const CoachLabTopBar: React.FC<CoachLabTopBarProps> = ({
 
       {/* Right: Actions, Language & New Exercise */}
       <div className="flex items-center gap-2">
+        {/* Brand Customizer Button */}
+        {onOpenBrandCustomizer && (
+          <button
+            onClick={onOpenBrandCustomizer}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Personalizza Nome, Logo e Colori dell'App"
+          >
+            <Sliders size={14} className="text-emerald-400" />
+            <span className="hidden lg:inline">Personalizza Logo</span>
+          </button>
+        )}
+
         {/* Favorite filter toggle */}
         <button
           onClick={onToggleFavoritesOnly}
@@ -121,3 +164,4 @@ export const CoachLabTopBar: React.FC<CoachLabTopBarProps> = ({
     </header>
   );
 };
+

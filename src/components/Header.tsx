@@ -19,7 +19,9 @@ import {
   Copy,
   Shirt,
   Smartphone,
+  Sliders,
 } from 'lucide-react';
+import { AppBrandConfig } from '../types';
 
 export type CloudSyncStatus = 'idle' | 'saving' | 'saved' | 'live' | 'error';
 
@@ -27,6 +29,7 @@ interface HeaderProps {
   tacticTitle: string;
   onUpdateTitle: (title: string) => void;
   brandName?: string;
+  brandConfig?: AppBrandConfig;
   onOpenBrandModal?: () => void;
   onOpenKitModal?: () => void;
   squadCount: number;
@@ -53,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
   tacticTitle,
   onUpdateTitle,
   brandName = 'MisterTactics',
+  brandConfig,
   onOpenBrandModal,
   onOpenKitModal,
   squadCount,
@@ -108,14 +112,41 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onOpenBrandModal}
           className="flex items-center gap-1.5 shrink-0 text-left hover:opacity-90 transition-opacity group cursor-pointer p-0.5 rounded-lg"
-          title="Personalizza Nome App & Icona iPhone / iPad"
+          title="Personalizza Nome App, Logo & Icona"
         >
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center font-bold text-white text-xs shadow-sm group-hover:scale-105 transition-transform">
-            <Shield size={15} className="stroke-[2.5]" />
-          </div>
+          {brandConfig?.iconType === 'custom_image' && brandConfig.customImageUrl ? (
+            <div className="w-7 h-7 rounded-lg overflow-hidden bg-slate-950 border border-slate-700 flex items-center justify-center shrink-0">
+              <img
+                src={brandConfig.customImageUrl}
+                alt="Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ) : brandConfig?.presetEmoji ? (
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform"
+              style={{ backgroundColor: brandConfig.presetBgColor || '#059669' }}
+            >
+              <span>{brandConfig.presetEmoji}</span>
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center font-bold text-white text-xs shadow-sm group-hover:scale-105 transition-transform">
+              <Shield size={15} className="stroke-[2.5]" />
+            </div>
+          )}
+
           <div className="hidden sm:flex items-center gap-1.5 leading-none">
             <span className="font-extrabold text-sm tracking-tight text-white font-sans flex items-center gap-1">
-              {brandName === 'MisterTactics' ? (
+              {brandConfig ? (
+                <>
+                  <span>{brandConfig.namePart1}</span>
+                  {brandConfig.namePart2 && (
+                    <span style={{ color: brandConfig.highlightColor || '#34d399' }}>
+                      {brandConfig.namePart2}
+                    </span>
+                  )}
+                </>
+              ) : brandName === 'MisterTactics' ? (
                 <>
                   Mister<span className="text-emerald-400">Tactics</span>
                 </>
