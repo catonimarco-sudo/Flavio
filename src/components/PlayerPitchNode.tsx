@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlacedPlayer, JerseyStyle } from '../types';
 import { getKitVisuals } from '../utils/kitVisuals';
+import { Player3DModel } from './Player3DModel';
 
 interface PlayerPitchNodeProps {
   player: PlacedPlayer;
@@ -73,12 +74,12 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
     roleBadgeBg = '#facc15';
     roleBadgeText = '#0f172a';
   } else if (team === 'keeper' || role === 'POR') {
-    primaryColor = player.customColor || (team === 'away' ? '#ea580c' : '#059669'); // Emerald or orange keeper
-    secondaryColor = '#ffffff';
-    trimColor = '#10b981';
-    roleBadgeBg = '#10b981';
-    roleBadgeText = '#022c22';
-  } else if (team === 'referee' || role === 'ARB') {
+    primaryColor = player.customColor || (team === 'away' ? '#ea580c' : '#facc15'); // Fluo yellow or orange keeper
+    secondaryColor = player.secondaryColor || '#0f172a'; // Black shorts
+    trimColor = '#0f172a';
+    roleBadgeBg = '#facc15';
+    roleBadgeText = '#0f172a';
+  } else if (team === 'referee' || role === 'ARB' || role === 'Mister' || role === 'ALL' || role === 'Coach') {
     primaryColor = player.customColor || '#0f172a';
     secondaryColor = '#facc15';
     trimColor = '#facc15';
@@ -105,8 +106,8 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
     roleBadgeBg = '#0284c7';
     roleBadgeText = '#ffffff';
   } else if (role === 'POR') {
-    roleBadgeBg = '#10b981';
-    roleBadgeText = '#022c22';
+    roleBadgeBg = '#facc15';
+    roleBadgeText = '#0f172a';
   }
 
   const hasPhoto = showPhotos && !!photoUrl;
@@ -278,8 +279,8 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
         </linearGradient>
       </defs>
 
-      {/* Dynamic Ground Elevation Shadow when Dragging */}
-      {isDragging && (
+      {/* Dynamic Ground Elevation Shadow when Dragging (for non-3D modes) */}
+      {isDragging && jerseyStyle !== '3d_player' && (
         <ellipse
           cx="0"
           cy="28"
@@ -293,10 +294,11 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
 
       {/* Active Touch Drag Glow Ring */}
       {isDragging && (
-        <circle
+        <ellipse
           cx="0"
-          cy="8"
-          r="40"
+          cy={jerseyStyle === '3d_player' ? 38 : 8}
+          rx={jerseyStyle === '3d_player' ? 26 : 40}
+          ry={jerseyStyle === '3d_player' ? 10 : 40}
           fill="none"
           stroke="#38bdf8"
           strokeWidth="3"
@@ -307,16 +309,30 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
 
       {/* Selection Ring / Highlight */}
       {isSelected && !isDragging && (
-        <circle
-          cx="0"
-          cy="8"
-          r="38"
-          fill="none"
-          stroke="#38bdf8"
-          strokeWidth="2.8"
-          strokeDasharray="6 4"
-          className="animate-spin-slow origin-center"
-        />
+        jerseyStyle === '3d_player' ? (
+          <ellipse
+            cx="0"
+            cy="38"
+            rx="25"
+            ry="9.5"
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth="2.4"
+            strokeDasharray="6 4"
+            className="animate-pulse origin-center"
+          />
+        ) : (
+          <circle
+            cx="0"
+            cy="8"
+            r="38"
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth="2.8"
+            strokeDasharray="6 4"
+            className="animate-spin-slow origin-center"
+          />
+        )
       )}
 
       {/* Sight / Orientation Indicator (Tactical Arrow) */}
@@ -373,7 +389,7 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
 
       {/* Quick Orientation & 3D Studio Floating Buttons when Selected */}
       {isSelected && (
-        <g className="cursor-pointer select-none" transform="translate(0, -58)">
+        <g className="cursor-pointer select-none" transform={`translate(0, ${jerseyStyle === '3d_player' ? -54 : -58})`}>
           {/* Quick Rotate Left (-45°) */}
           <g
             onClick={(e) => {
@@ -436,9 +452,29 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
       )}
 
       {/* ========================================================
-          VISUAL MODE 1: REALISTIC TACTICAL JERSEY & TV BROADCAST
+          VISUAL MODE 0: 3D REALISTIC FOOTBALL ATHLETE
           ======================================================== */}
-      {jerseyStyle === 'broadcast' || jerseyStyle === 'realistic' ? (
+      {jerseyStyle === '3d_player' ? (
+        <Player3DModel
+          player={player}
+          primaryColor={primaryColor}
+          secondaryColor={secondaryColor}
+          trimColor={secondaryColor}
+          skinTone={skinTone}
+          hairColor={hairColor}
+          hasPhoto={hasPhoto}
+          photoUrl={photoUrl}
+          displayName={displayName}
+          cleanLastName={cleanLastName}
+          contrastNumberColor={contrastNumberColor}
+          numberOutlineColor={numberOutlineColor}
+          showNumbers={showNumbers}
+          showNames={showNames}
+          isSelected={isSelected}
+          isDragging={isDragging}
+          rotation={rotation}
+        />
+      ) : jerseyStyle === 'broadcast' || jerseyStyle === 'realistic' ? (
         <g className="filter drop-shadow-xl select-none" transform={isFacingLeft ? 'scale(-1, 1)' : undefined}>
           {/* --- 0. TV Selection Highlight Outline --- */}
           {isSelected && (
@@ -1131,7 +1167,7 @@ export const PlayerPitchNode: React.FC<PlayerPitchNodeProps> = ({
           ======================================================== */}
       {(showRoles || showNames || showNumbers) && (
         <g
-          transform={`translate(0, ${jerseyStyle === 'circle' ? 19 : 26})`}
+          transform={`translate(0, ${jerseyStyle === 'circle' ? 19 : jerseyStyle === '3d_player' ? 44 : 26})`}
           className="pointer-events-none filter drop-shadow-md select-none"
         >
           {/* Main Background Frame - Sky Sport High-Contrast White Plaque */}

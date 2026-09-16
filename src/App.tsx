@@ -42,6 +42,22 @@ import {
   CloudTacticData,
   DEFAULT_FALLBACK_TACTIC_ID,
 } from './services/tacticsCloud';
+import { CoachLabSidebar, CoachLabNavTab } from './components/CoachLabSidebar';
+import { CoachLabTopBar } from './components/CoachLabTopBar';
+import { ExerciseLibraryView } from './components/ExerciseLibraryView';
+import { ExerciseDetailModal } from './components/ExerciseDetailModal';
+import { DashboardView } from './components/DashboardView';
+import {
+  CalendarioView,
+  SquadreView,
+  GiocatoriView,
+  SessioniView,
+  PianiLavoroView,
+  StatisticheView,
+  VideoView,
+  NoteView,
+} from './components/OtherCoachLabViews';
+import { COACHLAB_EXERCISES, CoachLabExercise } from './data/coachLabExercises';
 
 const getEquipmentInfo = (type: EquipmentType) => {
   switch (type) {
@@ -251,7 +267,7 @@ export default function App() {
   const [showNumbers, setShowNumbers] = useState<boolean>(true);
   const [showRoles, setShowRoles] = useState<boolean>(true);
   const [showOrientation, setShowOrientation] = useState<boolean>(true);
-  const [jerseyStyle, setJerseyStyle] = useState<JerseyStyle>('broadcast');
+  const [jerseyStyle, setJerseyStyle] = useState<JerseyStyle>('3d_player');
 
   // Layout toggles (Default closed for maximized pitch view)
   const [showSquadSidebar, setShowSquadSidebar] = useState<boolean>(false);
@@ -273,11 +289,19 @@ export default function App() {
   const [brandName, setBrandName] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('mistertactics_brand_name');
-      return saved || 'MisterTactics';
+      return saved || 'CoachLab';
     } catch {
-      return 'MisterTactics';
+      return 'CoachLab';
     }
   });
+
+  // CoachLab Navigation & Library State
+  const [activeNavTab, setActiveNavTab] = useState<CoachLabNavTab>('esercizi');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [selectedCoachLabExercise, setSelectedCoachLabExercise] = useState<CoachLabExercise | null>(null);
+  const [isExerciseDetailOpen, setIsExerciseDetailOpen] = useState<boolean>(false);
+  const [librarySearchQuery, setLibrarySearchQuery] = useState<string>('');
+  const [libraryFavoritesOnly, setLibraryFavoritesOnly] = useState<boolean>(false);
 
   // History stack for Undo / Redo
   const [history, setHistory] = useState<
@@ -420,6 +444,91 @@ export default function App() {
       return cleanDrawings;
     });
   }, [activeStepIndex]);
+
+  // Load an exercise from CoachLab into the interactive tactical pitch
+  const handleOpenCoachLabExerciseInBoard = useCallback((exercise: CoachLabExercise) => {
+    recordHistory();
+    setTacticTitle(exercise.title);
+    setDrillSheet((prev) => ({
+      ...prev,
+      title: exercise.title,
+      category: (exercise.category === 'Possesso palla' ? 'Possesso Palla' :
+                 exercise.category === 'Finalizzazione' ? 'Tiri in Porta' :
+                 exercise.category === 'Transizioni' ? 'Transizione' :
+                 exercise.category === 'Riscaldamento' ? 'Riscaldamento' :
+                 exercise.category === 'Tattica' ? 'Tattica Collettiva' :
+                 exercise.category === 'Palle inattive' ? 'Palle Inattive' :
+                 exercise.category === 'Portieri' ? 'Portieri' : 'Possesso Palla') as any,
+      objectivesPrimary: exercise.objective,
+      description: exercise.description,
+      coachingPoints: exercise.coachingPoints,
+      rulesAndVariations: exercise.rules,
+      durationMinutes: exercise.durationMinutes,
+      playersCount: `${exercise.playersCount} giocatori`,
+      pitchDimensions: exercise.fieldSize,
+    }));
+
+    if (exercise.drillType === 'possession') {
+      const newPlayers: PlacedPlayer[] = [
+        { id: 'bp-1', name: 'G1', number: 4, role: 'CC', team: 'home', customColor: '#2563eb', x: 300, y: 220, rotation: 180 },
+        { id: 'bp-2', name: 'G2', number: 8, role: 'CC', team: 'home', customColor: '#2563eb', x: 500, y: 200, rotation: 190 },
+        { id: 'bp-3', name: 'G3', number: 7, role: 'ED', team: 'home', customColor: '#2563eb', x: 600, y: 450, rotation: 350 },
+        { id: 'bp-4', name: 'G4', number: 10, role: 'TRQ', team: 'home', customColor: '#2563eb', x: 320, y: 470, rotation: 10 },
+        { id: 'bp-5', name: 'Jolly 1', number: 6, role: 'MED', team: 'jolly', customColor: '#10b981', x: 450, y: 340, rotation: 90 },
+        { id: 'bp-6', name: 'Jolly 2', number: 14, role: 'MED', team: 'jolly', customColor: '#10b981', x: 420, y: 390, rotation: 270 },
+        { id: 'rp-1', name: 'D1', number: 2, role: 'DC', team: 'away', customColor: '#ef4444', x: 390, y: 260, rotation: 120 },
+        { id: 'rp-2', name: 'D2', number: 3, role: 'DC', team: 'away', customColor: '#ef4444', x: 480, y: 290, rotation: 240 },
+        { id: 'rp-3', name: 'D3', number: 5, role: 'DC', team: 'away', customColor: '#ef4444', x: 410, y: 440, rotation: 40 },
+      ];
+      const newEq: PlacedEquipment[] = [
+        { id: 'be-1', type: 'ball', x: 460, y: 330, label: 'Palla', rotation: 0 },
+        { id: 'be-2', type: 'cone_orange', x: 260, y: 160, rotation: 0 },
+        { id: 'be-3', type: 'cone_orange', x: 640, y: 160, rotation: 0 },
+        { id: 'be-4', type: 'cone_orange', x: 640, y: 520, rotation: 0 },
+        { id: 'be-5', type: 'cone_orange', x: 260, y: 520, rotation: 0 },
+      ];
+      updatePlayersWithStep(newPlayers);
+      updateEquipmentWithStep(newEq);
+    } else if (exercise.drillType === 'finishing') {
+      const newPlayers: PlacedPlayer[] = [
+        { id: 'fp-por', name: 'Portiere', number: 1, role: 'POR', team: 'away', customColor: '#eab308', x: 80, y: 340, rotation: 0 },
+        { id: 'fp-1', name: 'Ala Cross', number: 7, role: 'ED', team: 'home', customColor: '#2563eb', x: 280, y: 140, rotation: 135 },
+        { id: 'fp-2', name: 'Punta 1° Palo', number: 9, role: 'ATT', team: 'home', customColor: '#2563eb', x: 240, y: 280, rotation: 180 },
+        { id: 'fp-3', name: 'Mezzala', number: 8, role: 'CC', team: 'home', customColor: '#2563eb', x: 380, y: 340, rotation: 180 },
+        { id: 'fp-4', name: 'Difensore', number: 3, role: 'DC', team: 'away', customColor: '#ef4444', x: 200, y: 320, rotation: 0 },
+      ];
+      const newEq: PlacedEquipment[] = [
+        { id: 'fe-1', type: 'ball', x: 295, y: 155, label: 'Palla', rotation: 0 },
+        { id: 'fe-2', type: 'mannequin', x: 180, y: 260, rotation: 0 },
+        { id: 'fe-3', type: 'mannequin', x: 180, y: 400, rotation: 0 },
+        { id: 'fe-4', type: 'disc_yellow', x: 300, y: 220, rotation: 0 },
+        { id: 'fe-5', type: 'disc_yellow', x: 300, y: 460, rotation: 0 },
+      ];
+      updatePlayersWithStep(newPlayers);
+      updateEquipmentWithStep(newEq);
+    } else if (exercise.drillType === 'transition') {
+      const newPlayers: PlacedPlayer[] = [
+        { id: 'tp-1', name: 'P1', number: 9, role: 'ATT', team: 'home', customColor: '#2563eb', x: 350, y: 340, rotation: 0 },
+        { id: 'tp-2', name: 'P2', number: 11, role: 'ES', team: 'home', customColor: '#2563eb', x: 420, y: 200, rotation: 30 },
+        { id: 'tp-3', name: 'P3', number: 7, role: 'ED', team: 'home', customColor: '#2563eb', x: 420, y: 480, rotation: 330 },
+        { id: 'tp-4', name: 'D1', number: 2, role: 'DC', team: 'away', customColor: '#ef4444', x: 620, y: 280, rotation: 180 },
+        { id: 'tp-5', name: 'D2', number: 5, role: 'DC', team: 'away', customColor: '#ef4444', x: 620, y: 400, rotation: 180 },
+      ];
+      const newEq: PlacedEquipment[] = [
+        { id: 'te-1', type: 'mini_goal', x: 920, y: 220, rotation: 0 },
+        { id: 'te-2', type: 'mini_goal', x: 920, y: 460, rotation: 0 },
+        { id: 'te-3', type: 'ball', x: 365, y: 340, rotation: 0 },
+        { id: 'te-4', type: 'cone_orange', x: 525, y: 160, rotation: 0 },
+        { id: 'te-5', type: 'cone_orange', x: 525, y: 520, rotation: 0 },
+      ];
+      updatePlayersWithStep(newPlayers);
+      updateEquipmentWithStep(newEq);
+    }
+
+    setDrawings([]);
+    setActiveNavTab('lavagna');
+    setIsExerciseDetailOpen(false);
+  }, [recordHistory, updatePlayersWithStep, updateEquipmentWithStep]);
 
   // Auto-persist all board states to localStorage
   useEffect(() => {
@@ -1106,9 +1215,93 @@ export default function App() {
     : null;
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-slate-950 text-slate-200 font-sans overflow-x-hidden">
-      {/* 1. Header with brand, tactic title & main action buttons */}
-      <Header
+    <div className="flex h-screen w-full bg-slate-950 text-slate-200 font-sans overflow-hidden">
+      {/* CoachLab Left Sidebar */}
+      <CoachLabSidebar
+        activeTab={activeNavTab}
+        onSelectTab={setActiveNavTab}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
+
+      {/* Main Content Column */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-950">
+        {/* CoachLab Top Navbar */}
+        <CoachLabTopBar
+          activeTab={activeNavTab}
+          onSelectTab={setActiveNavTab}
+          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+          searchQuery={librarySearchQuery}
+          onSearchChange={setLibrarySearchQuery}
+          showFavoritesOnly={libraryFavoritesOnly}
+          onToggleFavoritesOnly={() => setLibraryFavoritesOnly(!libraryFavoritesOnly)}
+          onNewExercise={() => {
+            handleClearAll();
+            setActiveNavTab('lavagna');
+          }}
+        />
+
+        {/* View Switcher based on activeNavTab */}
+        {activeNavTab === 'esercizi' && (
+          <ExerciseLibraryView
+            searchQuery={librarySearchQuery}
+            onSearchChange={setLibrarySearchQuery}
+            showFavoritesOnly={libraryFavoritesOnly}
+            onToggleFavoritesOnly={() => setLibraryFavoritesOnly(!libraryFavoritesOnly)}
+            onSelectExercise={(ex) => {
+              setSelectedCoachLabExercise(ex);
+              setIsExerciseDetailOpen(true);
+            }}
+            onNewExercise={() => {
+              handleClearAll();
+              setActiveNavTab('lavagna');
+            }}
+          />
+        )}
+
+        {activeNavTab === 'dashboard' && (
+          <DashboardView
+            onNavigateToExercises={() => setActiveNavTab('esercizi')}
+            onNavigateToBoard={() => setActiveNavTab('lavagna')}
+            onSelectExercise={(ex) => {
+              setSelectedCoachLabExercise(ex);
+              setIsExerciseDetailOpen(true);
+            }}
+          />
+        )}
+
+        {activeNavTab === 'calendario' && (
+          <CalendarioView onOpenTacticalBoard={() => setActiveNavTab('lavagna')} />
+        )}
+
+        {activeNavTab === 'squadre' && (
+          <SquadreView onOpenTacticalBoard={() => setActiveNavTab('lavagna')} />
+        )}
+
+        {activeNavTab === 'giocatori' && (
+          <GiocatoriView
+            squad={squad}
+            onOpenSquadModal={() => setIsSquadModalOpen(true)}
+            onOpenTacticalBoard={() => setActiveNavTab('lavagna')}
+          />
+        )}
+
+        {activeNavTab === 'sessioni' && (
+          <SessioniView onOpenTacticalBoard={() => setActiveNavTab('lavagna')} />
+        )}
+
+        {activeNavTab === 'piani_lavoro' && <PianiLavoroView />}
+
+        {activeNavTab === 'statistiche' && <StatisticheView />}
+
+        {activeNavTab === 'video' && <VideoView />}
+
+        {activeNavTab === 'note' && <NoteView />}
+
+        {activeNavTab === 'lavagna' && (
+          <div className="flex flex-col flex-1 w-full pb-16 animate-in fade-in duration-150">
+            {/* 1. Header with brand, tactic title & main action buttons */}
+            <Header
         tacticTitle={tacticTitle}
         onUpdateTitle={setTacticTitle}
         brandName={brandName}
@@ -1582,17 +1775,40 @@ export default function App() {
             jerseyStyle={jerseyStyle}
             onCycleJerseyStyle={() =>
               setJerseyStyle((prev) => {
+                if (prev === '3d_player') return 'broadcast';
                 if (prev === 'broadcast') return 'realistic';
                 if (prev === 'realistic') return 'shirt';
                 if (prev === 'shirt') return 'vest';
                 if (prev === 'vest') return 'circle';
-                return 'broadcast';
+                return '3d_player';
               })
             }
             onOpenKitCustomizer={() => setIsKitModalOpen(true)}
           />
         </div>
       </section>
+          </div>
+        )}
+      </div>
+
+      {/* CoachLab Exercise Detail Modal */}
+      <ExerciseDetailModal
+        exercise={selectedCoachLabExercise}
+        isOpen={isExerciseDetailOpen}
+        onClose={() => setIsExerciseDetailOpen(false)}
+        onOpenInTacticalBoard={handleOpenCoachLabExerciseInBoard}
+        onToggleFavorite={(id) => {
+          if (selectedCoachLabExercise && selectedCoachLabExercise.id === id) {
+            setSelectedCoachLabExercise({
+              ...selectedCoachLabExercise,
+              isFavorite: !selectedCoachLabExercise.isFavorite,
+            });
+          }
+        }}
+        onAddToSession={(ex) => {
+          handleOpenCoachLabExerciseInBoard(ex);
+        }}
+      />
 
       {/* 7. Modals */}
       {/* Squad Management Modal (Add, Edit, Delete, Photos, Custom Avatars) */}

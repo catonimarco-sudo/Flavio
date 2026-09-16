@@ -11,6 +11,7 @@ import {
   Compass,
   Tag,
   Palette,
+  Box,
 } from 'lucide-react';
 
 interface ToolbarPitchSettingsProps {
@@ -145,12 +146,14 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
           <span>Reparti</span>
         </button>
 
-        {/* Stile Maglie */}
+        {/* Stile Maglie & Giocatori 3D */}
         <button
           id="btn-cycle-jersey"
           onClick={onCycleJerseyStyle}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold transition-all shadow-sm ${
-            jerseyStyle === 'broadcast'
+            jerseyStyle === '3d_player'
+              ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400/70 hover:bg-cyan-500/35 shadow-cyan-500/20 ring-1 ring-cyan-400/40'
+              : jerseyStyle === 'broadcast'
               ? 'bg-yellow-500/25 text-yellow-300 border-yellow-500/60 hover:bg-yellow-500/35 shadow-yellow-500/10'
               : jerseyStyle === 'realistic'
               ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
@@ -160,16 +163,20 @@ export const ToolbarPitchSettings: React.FC<ToolbarPitchSettingsProps> = ({
               ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
               : 'bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-300'
           }`}
-          title="Cambia grafica giocatori: TV Broadcast (Come in Foto), Figura Realistica, Maglia 2D, Pettorine o Cerchio"
+          title="Cambia grafica giocatori: Giocatore 3D Realistico, TV Broadcast, Maglia 2D, Pettorine o Cerchio"
         >
-          {jerseyStyle === 'broadcast' ? (
-            <Sparkles size={12} className="text-yellow-400 animate-pulse" />
+          {jerseyStyle === '3d_player' ? (
+            <Box size={12} className="text-cyan-400 animate-pulse" />
+          ) : jerseyStyle === 'broadcast' ? (
+            <Sparkles size={12} className="text-yellow-400" />
           ) : (
             <Shirt size={12} className={jerseyStyle === 'realistic' ? 'text-amber-400' : 'text-blue-400'} />
           )}
           <span>
-            {jerseyStyle === 'broadcast'
-              ? 'TV Broadcast (Come in Foto)'
+            {jerseyStyle === '3d_player'
+              ? 'Giocatore 3D Realistico'
+              : jerseyStyle === 'broadcast'
+              ? 'TV Broadcast'
               : jerseyStyle === 'realistic'
               ? 'Figura Realistica'
               : jerseyStyle === 'shirt'

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DrillSheet, PlacedPlayer, PlacedEquipment, TacticalDrawing } from '../types';
 import { FileText, Printer, Check, X, Sparkles, Clock, Users, Target, FileDown } from 'lucide-react';
 import { generateTacticalPDF } from '../utils/pdfExport';
+import { ExercisePitchThumbnail } from './ExercisePitchThumbnail';
 
 interface DrillSheetModalProps {
   isOpen: boolean;
@@ -131,6 +132,11 @@ export const DrillSheetModal: React.FC<DrillSheetModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+          {/* 3D Isometric Tactical Thumbnail Preview */}
+          <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner">
+            <ExercisePitchThumbnail category={formData.category} className="w-full max-h-44" />
+          </div>
+
           {/* Row 1: Title & Category */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2">

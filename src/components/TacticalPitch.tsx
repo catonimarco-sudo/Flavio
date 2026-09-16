@@ -1244,11 +1244,34 @@ export const TacticalPitch: React.FC<TacticalPitchProps> = ({
 
           {/* Goal Net Postings */}
           {/* Left Goal */}
-          <rect x="25" y="303" width="30" height="74" strokeWidth="2" strokeDasharray="3,3" />
-          <line x1="55" y1="303" x2="55" y2="377" strokeWidth="4" strokeLinecap="round" />
+          <g opacity="0.9">
+            <rect x="23" y="303" width="32" height="74" fill="#000000" opacity="0.15" />
+            <rect x="23" y="303" width="32" height="74" stroke="#ffffff" strokeWidth="1" strokeDasharray="3,3" fill="none" opacity="0.65" />
+            <line x1="23" y1="318" x2="55" y2="318" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="23" y1="333" x2="55" y2="333" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="23" y1="347" x2="55" y2="347" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="23" y1="362" x2="55" y2="362" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="33" y1="303" x2="33" y2="377" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="44" y1="303" x2="44" y2="377" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="55" y1="303" x2="55" y2="377" stroke="#ffffff" strokeWidth="4.5" strokeLinecap="round" />
+            <circle cx="55" cy="303" r="3" fill="#ffffff" />
+            <circle cx="55" cy="377" r="3" fill="#ffffff" />
+          </g>
+
           {/* Right Goal */}
-          <rect x="995" y="303" width="30" height="74" strokeWidth="2" strokeDasharray="3,3" />
-          <line x1="995" y1="303" x2="995" y2="377" strokeWidth="4" strokeLinecap="round" />
+          <g opacity="0.9">
+            <rect x="995" y="303" width="32" height="74" fill="#000000" opacity="0.15" />
+            <rect x="995" y="303" width="32" height="74" stroke="#ffffff" strokeWidth="1" strokeDasharray="3,3" fill="none" opacity="0.65" />
+            <line x1="995" y1="318" x2="1027" y2="318" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="995" y1="333" x2="1027" y2="333" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="995" y1="347" x2="1027" y2="347" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="995" y1="362" x2="1027" y2="362" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="1006" y1="303" x2="1006" y2="377" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="1017" y1="303" x2="1017" y2="377" stroke="#ffffff" strokeWidth="0.8" strokeDasharray="2,2" opacity="0.6" />
+            <line x1="995" y1="303" x2="995" y2="377" stroke="#ffffff" strokeWidth="4.5" strokeLinecap="round" />
+            <circle cx="995" cy="303" r="3" fill="#ffffff" />
+            <circle cx="995" cy="377" r="3" fill="#ffffff" />
+          </g>
 
           {/* 4 Corner Arcs */}
           <path d="M 55 45 A 10 10 0 0 0 65 35" />
